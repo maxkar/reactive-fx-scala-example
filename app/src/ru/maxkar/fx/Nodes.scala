@@ -1,6 +1,7 @@
 package ru.maxkar.fx
 
 import javafx.scene._
+import javafx.scene.layout._
 
 import ru.maxkar.lib.reactive.value._
 import ru.maxkar.lib.reactive.value.Behaviour._
@@ -14,18 +15,8 @@ object Nodes {
         implicit lifespan : Lifespan)
       : Node = {
 
-    val res = new Group()
-    var last : Node = null
-
-    def update(node : Node) : Unit = {
-      if (last != null)
-        res.getChildren() remove last
-      last = node
-      if (node != null)
-        res.getChildren() add node
-    }
-
-    update _ :> ui
+    val res = new BorderPane()
+    res.setCenter _ :> ui
 
     res
   }

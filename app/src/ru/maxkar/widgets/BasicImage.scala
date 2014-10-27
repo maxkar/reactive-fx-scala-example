@@ -5,14 +5,18 @@ import java.io.File
 import javafx.scene._
 import javafx.scene.image._
 import javafx.scene.text._
+import javafx.scene.layout._
 import javafx.scene.control.ProgressIndicator
 
 import ru.maxkar.async._
+
+import ru.maxkar.widgets.zoom.Zoom
 
 import ru.maxkar.lib.reactive.value._
 import ru.maxkar.lib.reactive.value.Behaviour._
 
 import ru.maxkar.fx._
+import Bridge._
 
 /**
  * Basic image display capability.
@@ -21,7 +25,8 @@ import ru.maxkar.fx._
  */
 final class BasicImage(
       async : Promising[Throwable],
-      file : Behaviour[File])(
+      file : Behaviour[File],
+      zoom : Behaviour[Zoom])(
       implicit lifespan : Lifespan) {
   import BasicImage._
 
@@ -29,7 +34,6 @@ final class BasicImage(
 
   /** Current image state. */
   private val state = variable[State](Ready(null))
-
 
 
   /**
@@ -71,12 +75,23 @@ final class BasicImage(
   }
 
 
+  /** Current image UI. */
+  private val curImage = imageOf _ :> state
+
+  /** Image and zoom level. */
+  private val (imageUI, zoomLevel) =
+    Images.imageView(imageOf _ :> state, zoom)
+
+
   /** Internal node implementation. */
   val node = Nodes.contentOf(
     chooseDisplay _ :> state :>
-      Images.simpleView(imageOf _ :> state) :>
+      imageUI :>
       new ProgressIndicator(-1) :>
       Texts.simpleText(exnOf _ :> state))
+
+  /** Effective zoom value. */
+  val effectiveZoom = zoomLevel
 
   load _ :> file
 }
@@ -110,6 +125,8 @@ private object BasicImage {
   /** Loads a file and converts it into an image. */
   def loadFile(file : File) : Image = {
     val img = javax.imageio.ImageIO.read(file)
+    if (img == null)
+      return null
     val res = javafx.embed.swing.SwingFXUtils.toFXImage(img, null)
     img.flush()
     res

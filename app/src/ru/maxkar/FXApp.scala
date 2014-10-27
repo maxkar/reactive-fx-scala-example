@@ -14,6 +14,9 @@ import javafx.scene.layout._
 import ru.maxkar.fx._
 import ru.maxkar.fx.Bridge._
 
+import ru.maxkar.widgets.zoom.Zoom
+import ru.maxkar.widgets.zoom.Zoomer
+
 import ru.maxkar.lib.reactive.value.Lifespan
 import ru.maxkar.lib.reactive.value.Behaviour._
 
@@ -28,35 +31,42 @@ class FXApp extends Application {
   /** IO executor. */
   private val iohandler = new AsyncExecutor(Platform.runLater)
 
+
+  /** Zoom level presets. */
+  private val zoomLevels = Seq(0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0)
+
   override def start(primaryStage : Stage) : Unit = {
     val root = new BorderPane()
     val file = variable[File](null)
     val fc = new FileChooser()
 
-    val imageui = new ru.maxkar.widgets.BasicImage(iohandler, file)
+    val zoom = variable[Zoom](Zoom.Fixed(1.0))
 
-
-    val gb = new GridPane()
-    gb.add(imageui.node, 0, 0)
-    GridPane.setHalignment(imageui.node, HPos.CENTER)
-    GridPane.setValignment(imageui.node, VPos.CENTER)
-    GridPane.setHgrow(imageui.node, Priority.ALWAYS)
-    GridPane.setVgrow(imageui.node, Priority.ALWAYS)
-    gb setGridLinesVisible(true)
-    GridPane.setFillWidth(imageui.node, true)
-
-    val sp = new ScrollPane(gb)
-    sp setPannable true
-    sp setVbarPolicy ScrollPane.ScrollBarPolicy.NEVER
-    sp setHbarPolicy ScrollPane.ScrollBarPolicy.NEVER
-    sp setFitToWidth true
-    sp setFitToHeight true
-
-    root setCenter sp
+    val imageui = new ru.maxkar.widgets.BasicImage(iohandler, file, zoom)
+    root setCenter imageui.node
 
     val opText = iohandler.operationCount :< (x ⇒ "IO ops: " + x)
-    root setBottom (Texts.simpleText(opText))
+
+    val zoomBox = new ComboBox[Zoom]()
+    zoomBox.getItems().addAll(
+      (Zoom.SmartFit +: Zoom.Fit +: zoomLevels.map(x ⇒ Zoom.Fixed(x))))
+    bind(zoomBox.valueProperty, zoom, zoom.set)
+
+    val bottom = new HBox()
+    bottom setSpacing 10
+    bottom setPadding new Insets(0, 10, 0, 10)
+    bottom setAlignment Pos.CENTER_LEFT
+    bottom.getChildren().addAll(
+      Texts.simpleText(opText),
+      zoomBox,
+      Texts.simpleText(imageui.effectiveZoom :< (x ⇒
+        "%2.2f%%".format(x * 100))))
+
+    root setBottom bottom
     root setTop Buttons.simplestButton("Open", {
+      val pp = file.value
+      if (pp != null && pp.getParentFile != null)
+        fc.setInitialDirectory(pp.getParentFile)
       val f = fc.showOpenDialog(primaryStage)
       if (f != null)
         file.set(f)
