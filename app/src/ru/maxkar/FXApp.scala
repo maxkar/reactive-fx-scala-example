@@ -9,15 +9,15 @@ import javafx.stage._
 import javafx.scene._
 import javafx.scene.control._
 import javafx.scene.layout._
+import javafx.scene.input._
 
 
 import ru.maxkar.fx._
 import ru.maxkar.fx.Bridge._
 
 import ru.maxkar.widgets.zoom.Zoom
-import ru.maxkar.widgets.zoom.Zoomer
 
-import ru.maxkar.lib.reactive.value.Lifespan
+import ru.maxkar.lib.reactive.value.Behaviour
 import ru.maxkar.lib.reactive.value.Behaviour._
 
 import scala.collection.JavaConversions._
@@ -26,7 +26,7 @@ import scala.collection.JavaConversions._
 
 class FXApp extends Application {
   /** Application-wide lifespan. */
-  private implicit val lifespan = Lifespan.forever
+  private implicit val bindContext = Behaviour.defaultBindContext
 
   /** IO executor. */
   private val iohandler = new AsyncExecutor(Platform.runLater)
@@ -42,7 +42,7 @@ class FXApp extends Application {
 
     val zoom = variable[Zoom](Zoom.Fixed(1.0))
 
-    val imageui = new ru.maxkar.widgets.BasicImage(iohandler, file, zoom)
+    val imageui = new ru.maxkar.widgets.image.BasicImage(iohandler, file, zoom)
     root setCenter imageui.node
 
     val opText = iohandler.operationCount :< (x ⇒ "IO ops: " + x)
@@ -71,6 +71,11 @@ class FXApp extends Application {
       if (f != null)
         file.set(f)
     })
+
+
+    root.addEventFilter(KeyEvent.KEY_PRESSED,
+      Zoom.zoomShortcutHandler(
+        zoomLevels, imageui.effectiveZoom, zoom.set))
 
     primaryStage setOnCloseRequest shutdownAll
 

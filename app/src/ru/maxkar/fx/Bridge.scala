@@ -64,13 +64,13 @@ object Bridge {
   /** Converts property into behaviour. */
   implicit def property2behaviour[T](
         prop : ObservableValue[T])(
-        implicit lifespan : Lifespan)
+        implicit ctx : BindContext)
       : Behaviour[T] = {
-    val trigger = REvent.trigger()
+    val trigger = REvent.trigger(ctx.update)
     val listener = new Prop2TriggerBridge[T](trigger)
 
     prop.addListener(listener)
-    lifespan.onDispose(() ⇒ prop.removeListener(listener))
+    ctx.lifespan.onDispose(() ⇒ prop.removeListener(listener))
 
     new Behaviour[T] {
       override def value() : T = prop.getValue()
@@ -102,12 +102,12 @@ object Bridge {
       prop : WritableValue[T] with ObservableValue[T],
       value : Behaviour[T],
       setter : T ⇒ Unit)(
-      implicit lifespan : Lifespan)
+      implicit ctx : BindContext)
     : Unit = {
 
    val listener = new Prop2SetterBridge[T](setter, value)
    prop.addListener(listener)
-   lifespan.onDispose(() ⇒ prop.removeListener(listener))
+   ctx.lifespan.onDispose(() ⇒ prop.removeListener(listener))
 
    value :< (v ⇒
     if (v != prop.getValue)

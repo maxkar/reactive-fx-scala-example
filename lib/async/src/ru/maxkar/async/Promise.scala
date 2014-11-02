@@ -17,7 +17,7 @@ import ru.maxkar.lib.reactive.value.Behaviour._
  * @param R result type.
  */
 trait Promise[+E, +R] {
-  private implicit val lifespan = Lifespan.forever
+  private implicit val ctx = defaultBindContext
 
   /** Current promise state. */
   val state : Behaviour[PromiseState[E, R]]

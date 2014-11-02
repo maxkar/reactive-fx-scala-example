@@ -1,4 +1,4 @@
-package ru.maxkar.fx
+package ru.maxkar.widgets.image
 
 import javafx.geometry._
 import javafx.scene.Node
@@ -11,20 +11,11 @@ import ru.maxkar.widgets.zoom.Zoom
 import ru.maxkar.lib.reactive.value._
 import ru.maxkar.lib.reactive.value.Behaviour._
 
-import Bridge._
+import ru.maxkar.fx.Bridge._
+import ru.maxkar.fx.Layouts
 
 /** Image utilities. */
 object Images {
-  /** Creates a simple image view for the image behaviour. */
-  def simpleView(
-        state : Behaviour[Image])(
-        implicit lifespan : Lifespan)
-      : Node = {
-    val res = new ImageView
-    res.setImage _ :> state
-    res
-  }
-
 
   /**
    * Creates a "smart" image view with pannable image view
@@ -33,7 +24,7 @@ object Images {
  def imageView(
         state : Behaviour[Image],
         zoom : Behaviour[Zoom])(
-        implicit lifespan : Lifespan)
+        implicit ctx : BindContext)
       : (Region, Behaviour[Double]) = {
     val img = new ImageView
     img setPreserveRatio true

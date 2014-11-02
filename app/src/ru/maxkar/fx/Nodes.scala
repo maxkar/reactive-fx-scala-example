@@ -12,7 +12,7 @@ object Nodes {
   /** Creates a node which have a content of the target node. */
   def contentOf(
         ui : Behaviour[Node])(
-        implicit lifespan : Lifespan)
+        implicit ctx : BindContext)
       : Node = {
 
     val res = new BorderPane()

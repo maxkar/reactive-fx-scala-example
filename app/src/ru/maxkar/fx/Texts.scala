@@ -15,7 +15,7 @@ object Texts {
    */
   def simpleText(
         value : Behaviour[String])(
-        implicit lifetime : Lifespan)
+        implicit ctx : BindContext)
       : Node = {
     val res = new Text()
     res.setText _ :> value

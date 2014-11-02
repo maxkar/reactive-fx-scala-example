@@ -1,4 +1,4 @@
-package ru.maxkar.widgets
+package ru.maxkar.widgets.image
 
 import java.io.File
 
@@ -27,7 +27,7 @@ final class BasicImage(
       async : Promising[Throwable],
       file : Behaviour[File],
       zoom : Behaviour[Zoom])(
-      implicit lifespan : Lifespan) {
+      implicit ctx : BindContext) {
   import BasicImage._
 
   /* Model. */
