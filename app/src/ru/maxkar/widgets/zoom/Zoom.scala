@@ -141,6 +141,48 @@ object Zoom {
 
 
   /**
+   * Calculates a new zoom in the effect.
+   */
+  private def subEffectiveZoom(
+        x : Option[Double],
+        cur : Zoom)
+      : Option[Double] =
+    x match {
+      case Some(_) ⇒ x
+      case None ⇒
+        cur match {
+          case Fixed(t) ⇒ Some(t)
+          case _ ⇒ None
+        }
+    }
+
+
+
+  /**
+   * Finds a new zoom for the shortcut.
+   */
+  def zoomForShortcut(
+        presets : Seq[Double],
+        effectiveZoom : Option[Double],
+        selectedZoom : Zoom,
+        code : KeyCode)
+      : Option[Zoom] = {
+    val czoom = subEffectiveZoom(effectiveZoom, selectedZoom)
+    code match {
+      case KeyCode.PLUS | KeyCode.ADD ⇒
+        czoom.map(z ⇒ Zoom.Fixed(nextPresetZoom(presets, z)))
+      case KeyCode.MINUS | KeyCode.UNDERSCORE | KeyCode.SUBTRACT | KeyCode.EQUALS ⇒
+        czoom.map(z ⇒ Zoom.Fixed(prevPresetZoom(presets, z)))
+      case KeyCode.DIVIDE ⇒ Some(Zoom.Fixed(1.0))
+      case KeyCode.MULTIPLY ⇒ Some(Zoom.Fit)
+      case KeyCode.INSERT ⇒ Some(Zoom.SmartFit)
+      case _ ⇒ None
+    }
+  }
+
+
+
+  /**
    * Creates a zoom shortcut handler.
    * @param presets zoom preset values.
    * @param effectiveZoom effective (current) zoom value.

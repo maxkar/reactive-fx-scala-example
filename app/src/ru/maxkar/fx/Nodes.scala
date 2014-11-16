@@ -20,4 +20,18 @@ object Nodes {
 
     res
   }
+
+
+
+  /** Creates a region which have a content of the target node. */
+  def regionOf(
+        ui : Behaviour[Node])(
+        implicit ctx : BindContext)
+      : Region = {
+
+    val res = new BorderPane()
+    res.setCenter _ :> ui
+
+    res
+  }
 }

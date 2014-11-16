@@ -15,6 +15,9 @@ import javafx.scene.input._
 import ru.maxkar.fx._
 import ru.maxkar.fx.Bridge._
 
+
+import ru.maxkar.widgets.image.ImageLoaderView
+
 import ru.maxkar.widgets.zoom.Zoom
 
 import ru.maxkar.lib.reactive.value.Behaviour
@@ -25,6 +28,9 @@ import scala.collection.JavaConversions._
 
 
 class FXApp extends Application {
+  import FXApp._
+
+
   /** Application-wide lifespan. */
   private implicit val bindContext = Behaviour.defaultBindContext
 
@@ -35,6 +41,8 @@ class FXApp extends Application {
   /** Zoom level presets. */
   private val zoomLevels = Seq(0.25, 0.5, 0.75, 1.0, 1.5, 2.0, 3.0, 4.0)
 
+
+
   override def start(primaryStage : Stage) : Unit = {
     val root = new BorderPane()
     val file = variable[File](null)
@@ -42,8 +50,8 @@ class FXApp extends Application {
 
     val zoom = variable[Zoom](Zoom.Fixed(1.0))
 
-    val imageui = new ru.maxkar.widgets.image.BasicImage(iohandler, file, zoom)
-    root setCenter imageui.node
+    val imageui = ImageLoaderView.autoMake(iohandler, file, zoom)
+    root setCenter imageui.ui
 
     val opText = iohandler.operationCount :< (x ⇒ "IO ops: " + x)
 
@@ -59,8 +67,8 @@ class FXApp extends Application {
     bottom.getChildren().addAll(
       Texts.simpleText(opText),
       zoomBox,
-      Texts.simpleText(imageui.effectiveZoom :< (x ⇒
-        "%2.2f%%".format(x * 100))))
+      Texts.simpleText(zoomText _ :> imageui.effectiveZoom))
+
 
     root setBottom bottom
     root setTop Buttons.simplestButton("Open", {
@@ -74,8 +82,17 @@ class FXApp extends Application {
 
 
     root.addEventFilter(KeyEvent.KEY_PRESSED,
-      Zoom.zoomShortcutHandler(
-        zoomLevels, imageui.effectiveZoom, zoom.set))
+      (e : KeyEvent) ⇒ {
+        val newZoom = Zoom.zoomForShortcut(
+          zoomLevels, imageui.effectiveZoom.value, zoom.value,
+          e.getCode)
+        newZoom match {
+          case Some(x) ⇒
+            zoom set x
+            e.consume()
+          case _ ⇒ ()
+        }
+      })
 
     primaryStage setOnCloseRequest shutdownAll
 
@@ -85,6 +102,9 @@ class FXApp extends Application {
     primaryStage.show()
   }
 
+
+
+  /** Shutdowns the application. */
   private def shutdownAll() : Unit = {
     iohandler.shutdown.onComplete(_ ⇒ Platform.exit())
   }
@@ -94,4 +114,13 @@ class FXApp extends Application {
 object FXApp extends App{
   override def main(args : Array[String]) : Unit =
     Application.launch(classOf[FXApp], args: _*)
+
+
+
+  /** Formats a zoom text. */
+  private def zoomText(zoom : Option[Double]) : String =
+    zoom match {
+      case None ⇒ "--"
+      case Some(x) ⇒ "%2.2f%%".format(x)
+    }
 }
