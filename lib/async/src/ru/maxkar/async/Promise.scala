@@ -61,4 +61,11 @@ object Promise {
     new Promise[E, R] {
       override val state = b
     }
+
+
+
+  def immediate[E, T](v : T) : Promise[E, T] =
+    new Promise[E, T] {
+      override val state = const(Success(v))
+    }
 }

@@ -92,7 +92,7 @@ object MySettings {
     scalaSource in Test := baseDirectory.value / "test",
     resourceDirectory in Compile := baseDirectory.value / "resources",
     libraryDependencies += "org.scalatest" %% "scalatest" % "1.9.2" % "test",
-    scalacOptions ++= Seq("-feature", "-unchecked"/*, "-optimise"*/),
+    scalacOptions ++= Seq("-feature", "-unchecked", "-deprecation"/*, "-optimise"*/),
     scalacOptions in (Compile, doc) ++= Opts.doc.title("Secret tools")
   ) ++ Tasks.fullAssembly ++ Seq(
     trashDir := new File(".target").getAbsoluteFile(),

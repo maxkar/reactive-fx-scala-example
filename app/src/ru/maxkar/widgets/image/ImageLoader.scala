@@ -40,7 +40,7 @@ final class ImageLoader(
 
   /** Loads a specified file. */
   private def load(file : File) : Unit = {
-    if (nextFile != null) {
+    if (state.value == Loading) {
       nextFile = file
       return
     }

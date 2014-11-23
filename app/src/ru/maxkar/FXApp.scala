@@ -19,23 +19,25 @@ import ru.maxkar.fx.Bridge._
 import ru.maxkar.widgets.image.ImageLoaderView
 
 import ru.maxkar.widgets.zoom.Zoom
+import ru.maxkar.widgets.vfs._
 
 import ru.maxkar.lib.reactive.value.Behaviour
 import ru.maxkar.lib.reactive.value.Behaviour._
 
 import scala.collection.JavaConversions._
 
+import ru.maxkar.util.vfs._
 
 
-class FXApp extends Application {
+class FXApp(
+      iohandler : AsyncExecutor,
+      bro : DirectoryBrowser,
+      shutdownHandler : () ⇒ Unit) {
   import FXApp._
 
 
   /** Application-wide lifespan. */
   private implicit val bindContext = Behaviour.defaultBindContext
-
-  /** IO executor. */
-  private val iohandler = new AsyncExecutor(Platform.runLater)
 
 
   /** Zoom level presets. */
@@ -43,15 +45,50 @@ class FXApp extends Application {
 
 
 
-  override def start(primaryStage : Stage) : Unit = {
+  def start() : Unit = {
+    var primaryStage = new Stage()
     val root = new BorderPane()
-    val file = variable[File](null)
     val fc = new FileChooser()
+
+    val cnt = new SplitPane()
+
+    val tmp = variable[widgets.vfs.BrowserView.Item](null)
+
+    val curFile = variable[DirectoryEntry](null)
+    val fsRender = bro.state :/< ((s, c) ⇒ BrowserView.render(s, tmp, tmp.set)(c))
+    val fsview = Nodes.regionOf(fsRender)
+    fsRender :< (_.requestFocus())
+
+
+    fsview.addEventFilter(KeyEvent.KEY_PRESSED,
+      (e : KeyEvent) ⇒ {
+        val v = tmp.value
+        if (e.getCode == KeyCode.ENTER && v != null) {
+          e.consume()
+          v match {
+            case BrowserView.ParentEntry(x) ⇒ x()
+            case BrowserView.NestedEntry(x) ⇒ bro.enter(x)
+          }
+        }
+      })
+
+    val file = tmp :< (item ⇒
+      if (item == null)
+        null
+      else
+        item match {
+          case BrowserView.ParentEntry(x) ⇒ null
+          case BrowserView.NestedEntry(x) ⇒
+            if (x.filestream)
+              x.backingFile()
+            else
+              null
+        }
+      )
 
     val zoom = variable[Zoom](Zoom.Fixed(1.0))
 
     val imageui = ImageLoaderView.autoMake(iohandler, file, zoom)
-    root setCenter imageui.ui
 
     val opText = iohandler.operationCount :< (x ⇒ "IO ops: " + x)
 
@@ -71,14 +108,9 @@ class FXApp extends Application {
 
 
     root setBottom bottom
-    root setTop Buttons.simplestButton("Open", {
-      val pp = file.value
-      if (pp != null && pp.getParentFile != null)
-        fc.setInitialDirectory(pp.getParentFile)
-      val f = fc.showOpenDialog(primaryStage)
-      if (f != null)
-        file.set(f)
-    })
+
+    cnt.getItems.addAll(fsview, imageui.ui)
+    root setCenter cnt
 
 
     root.addEventFilter(KeyEvent.KEY_PRESSED,
@@ -94,7 +126,7 @@ class FXApp extends Application {
         }
       })
 
-    primaryStage setOnCloseRequest shutdownAll
+    primaryStage setOnCloseRequest shutdownHandler
 
     val scene = new Scene(root, 500, 500)
     primaryStage setTitle "JavaFX Scene Graph Demo"
@@ -111,12 +143,7 @@ class FXApp extends Application {
 }
 
 
-object FXApp extends App{
-  override def main(args : Array[String]) : Unit =
-    Application.launch(classOf[FXApp], args: _*)
-
-
-
+object FXApp {
   /** Formats a zoom text. */
   private def zoomText(zoom : Option[Double]) : String =
     zoom match {

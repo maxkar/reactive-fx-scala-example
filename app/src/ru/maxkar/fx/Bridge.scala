@@ -5,6 +5,9 @@ import javafx.event.EventHandler
 
 import javafx.beans.value._
 
+import javafx.collections.ObservableList
+import javafx.collections.FXCollections
+
 import ru.maxkar.lib.reactive.event.{Event ⇒ REvent}
 import ru.maxkar.lib.reactive.event.Trigger
 import ru.maxkar.lib.reactive.wave.Wave
@@ -12,6 +15,7 @@ import ru.maxkar.lib.reactive.value._
 import ru.maxkar.lib.reactive.value.Behaviour._
 
 import scala.language.implicitConversions
+import scala.collection.JavaConverters._
 
 /** Platform bridge. Implicits, conversions, etc... */
 object Bridge {
@@ -79,6 +83,14 @@ object Bridge {
   }
 
 
+
+  implicit class ObservableSeqExt[T](val v : Seq[T]) extends AnyVal {
+    def asFXList() : ObservableList[T] =
+      FXCollections.observableList(v.toList.asJava)
+  }
+
+
+
   private class Prop2SetterBridge[T](setter : T ⇒ Unit, guard : Behaviour[T])
       extends ChangeListener[T] {
     override def changed(
@@ -89,6 +101,28 @@ object Bridge {
       if (guard.value != newValue)
         setter(newValue)
   }
+
+
+
+  /**
+   * Binding for read-only properties with the setter.
+   */
+  def bindRO[T](
+        prop : ObservableValue[T],
+        psetter : T ⇒ Unit,
+        value : Behaviour[T],
+        setter : T ⇒ Unit)(
+        implicit ctx : BindContext)
+      : Unit = {
+    val listener = new Prop2SetterBridge[T](setter, value)
+    prop.addListener(listener)
+    ctx.lifespan.onDispose(() ⇒ prop.removeListener(listener))
+
+    value :< (v ⇒
+      if (v != prop.getValue)
+        psetter(v))
+  }
+
 
 
   /**
@@ -103,14 +137,6 @@ object Bridge {
       value : Behaviour[T],
       setter : T ⇒ Unit)(
       implicit ctx : BindContext)
-    : Unit = {
-
-   val listener = new Prop2SetterBridge[T](setter, value)
-   prop.addListener(listener)
-   ctx.lifespan.onDispose(() ⇒ prop.removeListener(listener))
-
-   value :< (v ⇒
-    if (v != prop.getValue)
-      prop.setValue(v))
- }
+    : Unit =
+   bindRO(prop, prop.setValue, value, setter)
 }
