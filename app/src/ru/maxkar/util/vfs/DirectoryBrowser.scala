@@ -132,7 +132,7 @@ final class DirectoryBrowser private(
    */
   private def load(item : DirectoryView) : (Seq[DirectoryEntry], DirectoryView, DirectoryView) = {
     val p = item.getParent()
-    val items = item.listEntries()
+    val items = item.listEntries().sortWith(isBefore)
     (items, item, p)
   }
 }
@@ -166,4 +166,23 @@ object DirectoryBrowser {
       val items = item.listEntries()
       new DirectoryBrowser(async, items, item, p)
     }
+
+
+
+  /** Entity sort order. */
+  private def isBefore(e1 : DirectoryEntry, e2 : DirectoryEntry) : Boolean = {
+    val pf1 = e1.container && !e1.filestream
+    val pf2 = e2.container && !e2.filestream
+    if (pf1 && pf2)
+      return e1.name.compareTo(e2.name) < 0
+    if (pf1 != pf2)
+      pf1
+
+    if (e1.container && e2.container)
+      return e1.name.compareTo(e2.name) < 0
+    if (e1.container != e2.container)
+      return e1.container
+
+    return e1.name.compareTo(e2.name) < 0
+  }
 }

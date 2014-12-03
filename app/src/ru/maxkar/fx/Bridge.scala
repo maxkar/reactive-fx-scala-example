@@ -4,6 +4,7 @@ import javafx.event.Event
 import javafx.event.EventHandler
 
 import javafx.beans.value._
+import javafx.util.Callback
 
 import javafx.collections.ObservableList
 import javafx.collections.FXCollections
@@ -40,11 +41,21 @@ object Bridge {
     }
 
 
+
   /** Another event handler converter. */
   implicit def fno2handler[T <: Event](fn : () ⇒ Unit) : EventHandler[T] =
     new EventHandler[T] {
       override def handle(evt : T) : Unit = fn()
     }
+
+
+
+  /** Callback converter. */
+  implicit def fn2cb[A, R](fn : A ⇒ R) : Callback[A, R] =
+    new Callback[A, R] {
+      override def call(a : A) : R = fn(a)
+    }
+
 
 
   /** Block event handler converter. */

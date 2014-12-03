@@ -74,18 +74,6 @@ final class ImageLoader(
         case Failure(x) ⇒ stateV set LoadError(x)
       }
   }
-
-
-
-  /** File load implementation. */
-  private def loadFile(file : File) : Image = {
-    val img = javax.imageio.ImageIO.read(file)
-    if (img == null)
-      return null
-    val res = javafx.embed.swing.SwingFXUtils.toFXImage(img, null)
-    img.flush()
-    res
-  }
 }
 
 
@@ -102,4 +90,17 @@ object ImageLoader {
   final case object Loading extends State
   /** Image loading failed. */
   final case class LoadError(err : Throwable) extends State
+
+
+
+  /** File load implementation. */
+  def loadFile(file : File) : Image = {
+    val img = javax.imageio.ImageIO.read(file)
+    if (img == null)
+      return null
+    val res = javafx.embed.swing.SwingFXUtils.toFXImage(img, null)
+    img.flush()
+    res
+  }
+
 }

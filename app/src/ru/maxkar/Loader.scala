@@ -1,5 +1,7 @@
 package ru.maxkar
 
+import java.io.File
+
 import ru.maxkar.async._
 
 import ru.maxkar.fx._
@@ -11,11 +13,14 @@ import javafx.scene.layout._
 import javafx.stage._
 import javafx.scene.text._
 import javafx.scene._
+import javafx.scene.image.Image
 
 
 import ru.maxkar.util.vfs._
+import ru.maxkar.widgets.vfs._
+import ru.maxkar.widgets.image.ImageLoader
 
-import scala.collection.mutable._
+import scala.collection.mutable.Stack
 
 
 final class Loader extends Application {
@@ -31,13 +36,16 @@ final class Loader extends Application {
     primaryStage.show()
 
     var x = DirectoryBrowser.open(iohandler, new java.io.File("."))
+    var y = iohandler(Loader.prepareFSRenderer())
 
-    x.onSuccess(x ⇒ {
-      shutdownHandlers.push(x.shutdown)
-      new FXApp(
-        iohandler, x,
-        () ⇒ Loader.shutdown(shutdownHandlers)).start()
-      primaryStage.hide()
+    y.onSuccess(y ⇒ {
+      x.onSuccess(x ⇒ {
+        shutdownHandlers.push(x.shutdown)
+        new FXApp(
+          iohandler, x, y,
+          () ⇒ Loader.shutdown(shutdownHandlers)).start()
+        primaryStage.hide()
+      })
     })
   }
 }
@@ -50,6 +58,22 @@ final class Loader extends Application {
 object Loader extends App {
   override def main(args : Array[String]) : Unit =
     Application.launch(classOf[Loader], args: _*)
+
+
+
+  def prepareFSRenderer() : BrowserViewRenderer = {
+    val base = "/usr/share/icons/gnome/24x24/"
+    BrowserViewRenderer.make(
+      dirIcon = mkImage(base + "places/folder.png"),
+      archiveIcon = mkImage(base + "mimetypes/folder_tar.png"),
+      imageIcon = mkImage(base + "mimetypes/image.png"),
+      imageUnknown = mkImage(base + "mimetypes/unknown.png"))
+  }
+
+
+
+  private def mkImage(path : String) : Image =
+    ImageLoader.loadFile(new File(path))
 
 
 

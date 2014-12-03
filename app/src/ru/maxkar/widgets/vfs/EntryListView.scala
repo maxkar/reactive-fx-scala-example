@@ -10,6 +10,7 @@ import javafx.scene.control.ListView
 
 import ru.maxkar.util.vfs._
 
+
 /**
  * Entry list view widgets and utilities.
  */

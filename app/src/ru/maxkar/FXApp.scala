@@ -27,11 +27,13 @@ import ru.maxkar.lib.reactive.value.Behaviour._
 import scala.collection.JavaConversions._
 
 import ru.maxkar.util.vfs._
+import ru.maxkar.widgets.vfs._
 
 
 class FXApp(
       iohandler : AsyncExecutor,
       bro : DirectoryBrowser,
+      fsRenderer : BrowserViewRenderer,
       shutdownHandler : () ⇒ Unit) {
   import FXApp._
 
@@ -52,10 +54,10 @@ class FXApp(
 
     val cnt = new SplitPane()
 
-    val tmp = variable[widgets.vfs.BrowserView.Item](null)
+    val tmp = variable[widgets.vfs.BrowserViewRenderer.Item](null)
 
     val curFile = variable[DirectoryEntry](null)
-    val fsRender = bro.state :/< ((s, c) ⇒ BrowserView.render(s, tmp, tmp.set)(c))
+    val fsRender = bro.state :/< ((s, c) ⇒ fsRenderer.render(s, tmp, tmp.set)(c))
     val fsview = Nodes.regionOf(fsRender)
     fsRender :< (_.requestFocus())
 
@@ -66,8 +68,8 @@ class FXApp(
         if (e.getCode == KeyCode.ENTER && v != null) {
           e.consume()
           v match {
-            case BrowserView.ParentEntry(x) ⇒ x()
-            case BrowserView.NestedEntry(x) ⇒ bro.enter(x)
+            case BrowserViewRenderer.ParentEntry(x) ⇒ x()
+            case BrowserViewRenderer.NestedEntry(x) ⇒ bro.enter(x)
           }
         }
       })
@@ -77,8 +79,8 @@ class FXApp(
         null
       else
         item match {
-          case BrowserView.ParentEntry(x) ⇒ null
-          case BrowserView.NestedEntry(x) ⇒
+          case BrowserViewRenderer.ParentEntry(x) ⇒ null
+          case BrowserViewRenderer.NestedEntry(x) ⇒
             if (x.filestream)
               x.backingFile()
             else
