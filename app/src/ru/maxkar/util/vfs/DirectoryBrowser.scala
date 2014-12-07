@@ -158,10 +158,10 @@ object DirectoryBrowser {
   /**
    * Opers a new browser in the specified directory.
    */
-  def open(async : Promising[Throwable], cur : File)
+  def open(async : Promising[Throwable], cur : File, mounter : FuseMounter)
       : Promise[Throwable, DirectoryBrowser] =
     async {
-      val item = DirectoryView.forFile(cur)
+      val item = DirectoryView.forFile(cur, mounter)
       val p = item.getParent()
       val items = item.listEntries()
       new DirectoryBrowser(async, items, item, p)

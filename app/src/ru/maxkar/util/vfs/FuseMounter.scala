@@ -51,11 +51,13 @@ class FuseMounter private(tmpPath : Path) {
   /**
    * Unmounts a mount point and deletes it.
    */
-  def unmount(target : Path) =
+  def unmount(target : File) = {
     doCommand(Array(
       "/usr/bin/fusermount",
       "-u",
       target.toString()))
+    target.delete()
+  }
 
 
 
@@ -88,7 +90,12 @@ object FuseMounter {
 
   /** Filesystem mounting attributes. */
   private val MOUNT_ATTRS = Perms.asFileAttribute(
-    Perms.fromString("r-x------"))
+    Perms.fromString("rwx------"))
+
+
+
+  /** Creates a new fuse mounter with specific working directory. */
+  def inPath(path : Path) : FuseMounter = new FuseMounter(path)
 
 
 
@@ -124,6 +131,7 @@ object FuseMounter {
   private def rarArgs(src : Path, dst : Path) : Array[String] =
     Array(
       "/usr/bin/rar2fs",
+      "--flat-only",
       src.toString(),
       dst.toString()
     )

@@ -2,6 +2,12 @@ package ru.maxkar
 
 import java.io.File
 
+import java.io.File
+import java.nio.file.Files
+import java.nio.file.Path
+import java.nio.file.Paths
+import java.nio.file.attribute.{PosixFilePermissions ⇒ Perms}
+
 import ru.maxkar.async._
 
 import ru.maxkar.fx._
@@ -35,16 +41,22 @@ final class Loader extends Application {
     primaryStage setScene new Scene(root, 300, 100)
     primaryStage.show()
 
-    var x = DirectoryBrowser.open(iohandler, new java.io.File("."))
-    var y = iohandler(Loader.prepareFSRenderer())
+    var fs = iohandler(Loader.createMountPoint())
 
-    y.onSuccess(y ⇒ {
-      x.onSuccess(x ⇒ {
-        shutdownHandlers.push(x.shutdown)
-        new FXApp(
-          iohandler, x, y,
-          () ⇒ Loader.shutdown(shutdownHandlers)).start()
-        primaryStage.hide()
+    fs.onSuccess(mp ⇒ {
+      shutdownHandlers.push(() ⇒ iohandler(Files.delete(mp)))
+      val mounter = FuseMounter.inPath(mp)
+      var x = DirectoryBrowser.open(iohandler, new java.io.File("."), mounter)
+      var y = iohandler(Loader.prepareFSRenderer())
+
+      y.onSuccess(y ⇒ {
+        x.onSuccess(x ⇒ {
+          shutdownHandlers.push(x.shutdown)
+          new FXApp(
+            iohandler, x, y,
+            () ⇒ Loader.shutdown(shutdownHandlers)).start()
+          primaryStage.hide()
+        })
       })
     })
   }
@@ -68,6 +80,14 @@ object Loader extends App {
       archiveIcon = mkImage(base + "mimetypes/folder_tar.png"),
       imageIcon = mkImage(base + "mimetypes/image.png"),
       imageUnknown = mkImage(base + "mimetypes/unknown.png"))
+  }
+
+
+
+  private def createMountPoint() : Path = {
+    val base = Paths.get("/var/tmp/portage")
+    Files.createTempDirectory(base, null,
+      Perms.asFileAttribute(Perms.fromString("rwx------")))
   }
 
 

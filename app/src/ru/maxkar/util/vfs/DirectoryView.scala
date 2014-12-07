@@ -20,12 +20,13 @@ import java.io.File
  */
 class DirectoryView private(
       private var parent : DirectoryView,
-      physicalPath : File) {
+      physicalPath : File,
+      unmountOnClose : Boolean,
+      mounter : FuseMounter) {
   import DirectoryView._
 
   /** Flag, indicating that directory view is closed. */
   private var closed = false
-
 
 
 
@@ -53,6 +54,8 @@ class DirectoryView private(
   def close() : Unit = {
     if (isClosed())
       return
+    if (unmountOnClose)
+      mounter.unmount(physicalPath)
     closed = true
   }
 
@@ -65,8 +68,8 @@ class DirectoryView private(
   def getParent() : DirectoryView = op {
     if (parent != null)
       return parent
-    parent = findParent()
-    return parent
+        parent = findParent()
+        return parent
   }
 
 
@@ -76,9 +79,9 @@ class DirectoryView private(
    */
   private def findParent() : DirectoryView = {
     val pd = physicalPath.getParentFile()
-    if (pd != null)
-      return new DirectoryView(null, pd)
-    return null
+      if (pd != null)
+        return new DirectoryView(null, pd, false, mounter)
+          return null
   }
 
 
@@ -91,11 +94,14 @@ class DirectoryView private(
    */
   def listEntries() : Seq[DirectoryEntry] = op {
     val entries = physicalPath.listFiles()
-    if (entries == null)
-      throw new UnreadableDirectoryException(physicalPath)
-    entries.toSeq.map(
-      e ⇒ new DirectoryEntry(
-        this, e.getName(), isContainer(e), e.isFile()))
+      if (entries == null)
+        throw new UnreadableDirectoryException(physicalPath)
+          entries.toSeq.map(
+              e ⇒ {
+                val isDir = e.isDirectory()
+                new DirectoryEntry(
+                  this, e.getName(), !isDir && mounter.canMount(e.getName), isDir, e.isFile())
+              })
   }
 
 
@@ -107,11 +113,16 @@ class DirectoryView private(
   def open(entry : DirectoryEntry) : DirectoryView = {
     if (entry.parent `ne` this)
       throw new IllegalArgumentException(
-        "Directory entry do not belong to this view")
+          "Directory entry do not belong to this view")
 
-    op {
-      new DirectoryView(this, new File(physicalPath, entry.name))
-    }
+        op {
+          if (!entry.canMount)
+            new DirectoryView(this, new File(physicalPath, entry.name), false, mounter)
+          else {
+            val mountPath = mounter.mount(new File(physicalPath, entry.name))
+            new DirectoryView(this, mountPath, true, mounter)
+          }
+        }
   }
 
 
@@ -123,10 +134,10 @@ class DirectoryView private(
   def backingFile(entry : DirectoryEntry) : File = {
     if (entry.parent `ne` this)
       throw new IllegalArgumentException(
-        "Directory entry do not belong to this view")
-    op {
-      new File(physicalPath, entry.name)
-    }
+          "Directory entry do not belong to this view")
+        op {
+          new File(physicalPath, entry.name)
+        }
   }
 
 
@@ -139,7 +150,7 @@ class DirectoryView private(
   private def op[T](x : ⇒ T) : T = {
     if (isClosed())
       throw new ViewClosedException()
-    x
+        x
   }
 }
 
@@ -156,8 +167,8 @@ object DirectoryView {
    * be determined (i.e. file name does not exist or parent directories
    * are not accessible).
    */
-  def forFile(file : File) : DirectoryView =
-    new DirectoryView(null, file.getCanonicalFile())
+  def forFile(file : File, mounter : FuseMounter) : DirectoryView =
+    new DirectoryView(null, file.getCanonicalFile(), false, mounter)
 
 
 

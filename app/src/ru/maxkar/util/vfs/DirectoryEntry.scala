@@ -15,8 +15,13 @@ import java.io.File
 final class DirectoryEntry private[vfs](
       private[vfs] val parent : DirectoryView,
       val name : String,
-      val container : Boolean,
+      private[vfs] val canMount :Boolean,
+      private[vfs] val isDir : Boolean,
       val filestream : Boolean) {
+
+
+
+  val container = canMount || isDir
 
 
   /** Checks if entity is owned by the parent item. */
