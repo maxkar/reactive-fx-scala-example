@@ -10,6 +10,7 @@ import javafx.scene._
 import javafx.scene.control._
 import javafx.scene.layout._
 import javafx.scene.input._
+import javafx.scene.image.Image
 
 
 import ru.maxkar.fx._
@@ -32,8 +33,8 @@ import ru.maxkar.widgets.vfs._
 
 class FXApp(
       iohandler : AsyncExecutor,
-      bro : DirectoryBrowser,
-      fsRenderer : BrowserViewRenderer,
+      bro : FileWalker,
+      fsRenderer : (Image, Image, Image, Image),
       shutdownHandler : () ⇒ Unit) {
   import FXApp._
 
@@ -54,37 +55,32 @@ class FXApp(
 
     val cnt = new SplitPane()
 
-    val tmp = variable[widgets.vfs.BrowserViewRenderer.Item](null)
+ //   val tmp = variable[widgets.vfs.BrowserViewRenderer.Item](null)
 
     val curFile = variable[DirectoryEntry](null)
-    val fsRender = bro.state :/< ((s, c) ⇒ fsRenderer.render(s, tmp, tmp.set)(c))
-    val fsview = Nodes.regionOf(fsRender)
-    fsRender :< (_.requestFocus())
+    val fsRender =
+      FileWalkerView.make(bro,
+        fsRenderer._1, fsRenderer._2, fsRenderer._3, fsRenderer._4)
+    fsRender.requestFocus()
 
 
-    fsview.addEventFilter(KeyEvent.KEY_PRESSED,
+    fsRender.addEventFilter(KeyEvent.KEY_PRESSED,
       (e : KeyEvent) ⇒ {
-        val v = tmp.value
-        if (e.getCode == KeyCode.ENTER && v != null) {
+        if (e.getCode == KeyCode.ENTER) {
           e.consume()
-          v match {
-            case BrowserViewRenderer.ParentEntry(x) ⇒ x()
-            case BrowserViewRenderer.NestedEntry(x) ⇒ bro.enter(x)
-          }
+          bro.open()
         }
       })
 
-    val file = tmp :< (item ⇒
+
+    val file = bro.selection :< (item ⇒
       if (item == null)
         null
       else
         item match {
-          case BrowserViewRenderer.ParentEntry(x) ⇒ null
-          case BrowserViewRenderer.NestedEntry(x) ⇒
-            if (x.filestream)
-              x.backingFile()
-            else
-              null
+          case FileInfo.NestedItem(FileType.Image, e) if e.filestream ⇒
+            e.backingFile()
+          case _ ⇒ null
         }
       )
 
@@ -111,7 +107,7 @@ class FXApp(
 
     root setBottom bottom
 
-    cnt.getItems.addAll(fsview, imageui.ui)
+    cnt.getItems.addAll(fsRender, imageui.ui)
     root setCenter cnt
 
 

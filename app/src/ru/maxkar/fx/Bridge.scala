@@ -65,6 +65,19 @@ object Bridge {
     }
 
 
+  /** Implicit conversion from list to observable list. */
+  implicit def seqb2obsl[T](
+        base : Behaviour[Seq[T]])(
+        implicit ctx : BindContext)
+      : ObservableList[T] = {
+    val inner = FXCollections.observableArrayList[T]()
+    base :< (items ⇒ {
+      inner.setAll(items.asJava)
+    })
+    FXCollections.unmodifiableObservableList(inner)
+  }
+
+
   private class Prop2TriggerBridge[T](trigger : Trigger)
       extends ChangeListener[T] {
     override def changed(

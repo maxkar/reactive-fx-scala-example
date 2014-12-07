@@ -46,12 +46,13 @@ final class Loader extends Application {
     fs.onSuccess(mp ⇒ {
       shutdownHandlers.push(() ⇒ iohandler(Files.delete(mp)))
       val mounter = FuseMounter.inPath(mp)
-      var x = DirectoryBrowser.open(iohandler, new java.io.File("."), mounter)
+
+      var x = FileWalker.open(iohandler, mounter, new java.io.File("."))
       var y = iohandler(Loader.prepareFSRenderer())
 
       y.onSuccess(y ⇒ {
         x.onSuccess(x ⇒ {
-          shutdownHandlers.push(x.shutdown)
+          shutdownHandlers.push(x.close)
           new FXApp(
             iohandler, x, y,
             () ⇒ Loader.shutdown(shutdownHandlers)).start()
@@ -73,13 +74,12 @@ object Loader extends App {
 
 
 
-  def prepareFSRenderer() : BrowserViewRenderer = {
+  def prepareFSRenderer() : (Image, Image, Image, Image) = {
     val base = "/usr/share/icons/gnome/24x24/"
-    BrowserViewRenderer.make(
-      dirIcon = mkImage(base + "places/folder.png"),
-      archiveIcon = mkImage(base + "mimetypes/folder_tar.png"),
-      imageIcon = mkImage(base + "mimetypes/image.png"),
-      imageUnknown = mkImage(base + "mimetypes/unknown.png"))
+    (mkImage(base + "places/folder.png"),
+     mkImage(base + "mimetypes/folder_tar.png"),
+     mkImage(base + "mimetypes/image.png"),
+     mkImage(base + "mimetypes/unknown.png"))
   }
 
 
