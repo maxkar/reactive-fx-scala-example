@@ -128,19 +128,15 @@ class FXApp(
         }
       })
 
-    primaryStage setOnCloseRequest shutdownHandler
+    primaryStage.setOnCloseRequest((e : WindowEvent) ⇒ {
+      e.consume()
+      shutdownHandler()
+    })
 
     val scene = new Scene(root, 500, 500)
     primaryStage setTitle "JavaFX Scene Graph Demo"
     primaryStage setScene scene
     primaryStage.show()
-  }
-
-
-
-  /** Shutdowns the application. */
-  private def shutdownAll() : Unit = {
-    iohandler.shutdown.onComplete(_ ⇒ Platform.exit())
   }
 }
 

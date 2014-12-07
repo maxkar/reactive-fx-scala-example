@@ -99,9 +99,13 @@ object Loader extends App {
 
   /** Shutdowns platform completely. */
   def shutdown(handlers : Stack[() ⇒ Promise[Any, Any]]) : Unit = {
+    try {
     if (handlers.isEmpty)
       Platform.exit()
     else
       handlers.pop()().onComplete(_ ⇒ shutdown(handlers))
+    } catch {
+      case e : Throwable ⇒ e.printStackTrace()
+    }
   }
 }
