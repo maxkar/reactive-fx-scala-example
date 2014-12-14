@@ -150,7 +150,8 @@ object CustomBuild extends Build {
   lazy val lib_reactive = lib("lib-reactive")
 
   /* Libraries. */
-  lazy val lib_async = prj("lib/async", lib_reactive)
+  lazy val lib_fun = prj("lib/fun")
+  lazy val lib_async = prj("lib/async", lib_reactive, lib_fun)
 
   /* Projects. */
   lazy val app = prj("app", lib_async)
@@ -158,6 +159,7 @@ object CustomBuild extends Build {
   lazy val root = Project("root", file("."),
     settings = buildSettings ++ unidocSettings ++ Seq(Tasks.internalName := "root")
   ).aggregate(
+    lib_fun,
     lib_async,
     app
   )

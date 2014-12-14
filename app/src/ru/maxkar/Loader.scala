@@ -22,6 +22,8 @@ import javafx.scene.text._
 import javafx.scene._
 import javafx.scene.image.Image
 
+import ru.maxkar.fun._
+import ru.maxkar.fun.syntax._
 
 import ru.maxkar.util.vfs._
 import ru.maxkar.widgets.vfs._
@@ -32,7 +34,7 @@ import scala.collection.mutable.Stack
 
 final class Loader extends Application {
   override def start(primaryStage : Stage) : Unit = {
-    val shutdownHandlers = new Stack[() ⇒ Promise[Any, Any]]
+    val shutdownHandlers = new Stack[() ⇒ Promise[Any]]
     val iohandler = new AsyncExecutor(Platform.runLater)
     shutdownHandlers.push(iohandler.shutdown)
 
@@ -43,17 +45,17 @@ final class Loader extends Application {
     primaryStage.show()
 
     val fs = iohandler(Loader.createMountPoint())
-    fs.onSuccess(mp ⇒
-      shutdownHandlers.push(() ⇒ iohandler(Files.delete(mp))))
+    fs ≺ (mp ⇒
+      shutdownHandlers.push(
+        () ⇒ iohandler(Files.delete(mp))))
     val style = Loader.prepareFSRenderer()
 
-    def openWalker(mountPoint : Path) : Promise[Throwable, FileWalker] =
+    val walker = fs ≼ (mp ⇒
       FileWalker.open(
         iohandler,
-        FuseMounter.inPath(mountPoint),
-        new java.io.File("."))
-    val walker = openWalker _ :>> fs
-    walker.onSuccess(w ⇒ shutdownHandlers.push(() ⇒ w.close()))
+        FuseMounter.inPath(mp),
+        new java.io.File(".")))
+    walker ≺ (w ⇒ shutdownHandlers.push(() ⇒ w.close()))
 
     def launch(w : FileWalker)(style : (Image, Image, Image, Image)) : Unit = {
       new FXApp(
@@ -61,7 +63,7 @@ final class Loader extends Application {
         () ⇒ Loader.shutdown(shutdownHandlers)).start()
       primaryStage.hide()
     }
-    launch _ :> walker :> style
+    launch _ ≻ walker ≻ style
   }
 }
 
@@ -100,7 +102,7 @@ object Loader extends App {
 
 
   /** Shutdowns platform completely. */
-  def shutdown(handlers : Stack[() ⇒ Promise[Any, Any]]) : Unit = {
+  def shutdown(handlers : Stack[() ⇒ Promise[Any]]) : Unit = {
     try {
     if (handlers.isEmpty)
       Platform.exit()

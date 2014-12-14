@@ -14,7 +14,7 @@ import ru.maxkar.util.vfs._
  * @param async asynchronous executor.
  */
 final class FileWalker private(
-      async : Promising[Throwable],
+      async : Promising,
       baseEntities : Set[FileInfo],
       baseDirectory : DirectoryView) {
 
@@ -93,7 +93,7 @@ final class FileWalker private(
   /**
    * Closes this file walker. Should be called when
    * theer are no active operations. */
-  def close() : Promise[Throwable, Unit] = {
+  def close() : Promise[Unit] = {
     if (inOp)
       return Promise.immediate(())
     inOp = true
@@ -164,10 +164,10 @@ object FileWalker {
    * @param base base directory.
    */
   def open(
-        async : Promising[Throwable],
+        async : Promising,
         mounter : FuseMounter,
         base : java.io.File)
-      : Promise[Throwable, FileWalker] =
+      : Promise[FileWalker] =
     async {
       val initialDir = DirectoryView.forFile(base, mounter)
       val (files, d) = loadContent(initialDir)

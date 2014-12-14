@@ -115,7 +115,7 @@ object ImageLoaderView {
    * image view.
    */
   def autoMake(
-        async : Promising[Throwable],
+        async : Promising,
         file : Behaviour[File],
         zoom : Behaviour[Zoom])(
         implicit ctx : BindContext) :

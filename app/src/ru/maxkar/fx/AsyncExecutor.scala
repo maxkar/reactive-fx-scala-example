@@ -13,7 +13,7 @@ import java.util.concurrent._
  * platform thread.
  * @param runPlatf output to the platform thread (EDT, FX thread, etc...)
  */
-final class AsyncExecutor(runPlatf : Runnable ⇒ Unit) extends Promising[Throwable]{
+final class AsyncExecutor(runPlatf : Runnable ⇒ Unit) extends Promising {
   /** Operation executor. */
   private val executor = Executors.newSingleThreadExecutor()
 
@@ -25,8 +25,8 @@ final class AsyncExecutor(runPlatf : Runnable ⇒ Unit) extends Promising[Throwa
 
 
   /** Shuts this executor down. Returns an operation promise. */
-  def shutdown() : Promise[Nothing, Unit] = {
-    val res = variable[PromiseState[Nothing, Unit]](InProgress)
+  def shutdown() : Promise[Unit] = {
+    val res = variable[PromiseState[Unit]](InProgress)
 
     new Thread(run {
       executor.shutdown()
@@ -44,8 +44,8 @@ final class AsyncExecutor(runPlatf : Runnable ⇒ Unit) extends Promising[Throwa
    * Executes an operation on the executor thread.
    * Moves all state notifications back to the application thread.
    */
-  override def apply[T](op : ⇒ T) : Promise[Throwable, T] = {
-    val res = variable[PromiseState[Throwable, T]](InProgress)
+  override def apply[T](op : ⇒ T) : Promise[T] = {
+    val res = variable[PromiseState[T]](InProgress)
 
     def fail(t : Throwable) : Unit = {
       if (res.value != InProgress)

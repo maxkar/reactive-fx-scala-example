@@ -16,7 +16,7 @@ import ru.maxkar.lib.reactive.value.Behaviour._
  * @param file current file to load and display.
  */
 final class ImageLoader(
-      async : Promising[Throwable],
+      async : Promising,
       file : Behaviour[File])(
       implicit ctx : BindContext){
   import ImageLoader._
@@ -65,7 +65,7 @@ final class ImageLoader(
 
 
   /** Applies a new image content. */
-  private def applyNewImage(res : PromiseResult[Throwable, Image]) : Unit = {
+  private def applyNewImage(res : PromiseResult[Image]) : Unit = {
     if (nextFile != null)
       doLoad(nextFile)
     else
