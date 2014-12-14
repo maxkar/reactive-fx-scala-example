@@ -9,6 +9,7 @@ import java.nio.file.Paths
 import java.nio.file.attribute.{PosixFilePermissions ⇒ Perms}
 
 import ru.maxkar.async._
+import ru.maxkar.async.Promise._
 
 import ru.maxkar.fx._
 
@@ -35,31 +36,32 @@ final class Loader extends Application {
     val iohandler = new AsyncExecutor(Platform.runLater)
     shutdownHandlers.push(iohandler.shutdown)
 
-    var root = new BorderPane()
+    val root = new BorderPane()
     root setCenter new Text("Loading")
 
     primaryStage setScene new Scene(root, 300, 100)
     primaryStage.show()
 
-    var fs = iohandler(Loader.createMountPoint())
+    val fs = iohandler(Loader.createMountPoint())
+    fs.onSuccess(mp ⇒
+      shutdownHandlers.push(() ⇒ iohandler(Files.delete(mp))))
+    val style = Loader.prepareFSRenderer()
 
-    fs.onSuccess(mp ⇒ {
-      shutdownHandlers.push(() ⇒ iohandler(Files.delete(mp)))
-      val mounter = FuseMounter.inPath(mp)
+    def openWalker(mountPoint : Path) : Promise[Throwable, FileWalker] =
+      FileWalker.open(
+        iohandler,
+        FuseMounter.inPath(mountPoint),
+        new java.io.File("."))
+    val walker = openWalker _ :>> fs
+    walker.onSuccess(w ⇒ shutdownHandlers.push(() ⇒ w.close()))
 
-      var x = FileWalker.open(iohandler, mounter, new java.io.File("."))
-      var y = iohandler(Loader.prepareFSRenderer())
-
-      y.onSuccess(y ⇒ {
-        x.onSuccess(x ⇒ {
-          shutdownHandlers.push(x.close)
-          new FXApp(
-            iohandler, x, y,
-            () ⇒ Loader.shutdown(shutdownHandlers)).start()
-          primaryStage.hide()
-        })
-      })
-    })
+    def launch(w : FileWalker)(style : (Image, Image, Image, Image)) : Unit = {
+      new FXApp(
+        iohandler, w, style,
+        () ⇒ Loader.shutdown(shutdownHandlers)).start()
+      primaryStage.hide()
+    }
+    launch _ :> walker :> style
   }
 }
 

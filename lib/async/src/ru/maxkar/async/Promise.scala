@@ -54,7 +54,8 @@ trait Promise[+E, +R] {
  * Promise companion object
  */
 object Promise {
-  implicit val lifespan = Lifespan.forever
+  import scala.language.implicitConversions
+  implicit val lifespan = Behaviour.defaultBindContext
 
   /** Creates a new promise from the behaviour. */
   def fromBehaviour[E, R](b : Behaviour[PromiseState[E, R]]) : Promise[E, R] =
@@ -64,8 +65,67 @@ object Promise {
 
 
 
+  /** Creates an async for the non-async result. */
   def immediate[E, T](v : T) : Promise[E, T] =
     new Promise[E, T] {
       override val state = const(Success(v))
     }
+
+
+
+
+  /** Monadic flatten. */
+  def flatten[E, R](v : Promise[E, Promise[E, R]]) : Promise[E, R] =
+    fromBehaviour(Behaviour.join(v.state :< (vv ⇒ vv match {
+      case Failure(x) ⇒ Behaviour.const(Failure(x))
+      case InProgress ⇒ Behaviour.const(InProgress)
+      case Success(x) ⇒ x.state
+    })))
+
+
+
+  implicit class MapFnOverPromise[T, R](val fn : T ⇒ R) extends AnyVal {
+    def :>[E](promise : Promise[E, T]) : Promise[E, R] =
+      fromBehaviour(promise.state :< (r ⇒ r.map(fn)))
+  }
+
+
+
+  implicit class ApplicativeFnOverPromise[E, T, R](val fn : Promise[E, T ⇒ R]) extends AnyVal {
+    def :>(promise : Promise[E, T]) : Promise[E, R] = {
+      var fail : Failure[E] = null
+      def combo(r1 : PromiseState[E, T ⇒ R])(r2 : PromiseState[E, T]) : PromiseState[E, R] = {
+        if (fail != null)
+          return fail
+        (r1,r2) match {
+          case (Failure(x), _) ⇒
+            fail = Failure(x)
+            return fail
+          case (_, Failure(x)) ⇒
+            fail = Failure(x)
+            return fail
+          case (InProgress, _) | (_, InProgress) ⇒ InProgress
+          case (Success(x), Success(y)) ⇒ Success(x(y))
+        }
+      }
+      fromBehaviour(combo _ :> fn.state :> promise.state)
+    }
+
+
+    def :>(v : T) : Promise[E, R] =
+      fromBehaviour(fn.state :< (x ⇒ x.map(z ⇒ z(v))))
+  }
+
+
+
+  implicit class MonadicFnApply[E, T, R](val fn : Promise[E, T ⇒ Promise[E, R]]) extends AnyVal {
+    def :>>(promise : Promise[E, T]) : Promise[E, R] =
+      flatten(fn :> promise)
+  }
+
+
+  implicit class MonadicPureFnApply[E, T, R](val fn : T ⇒ Promise[E, R]) extends AnyVal {
+    def :>>(promise : Promise[E, T]) : Promise[E, R] =
+      flatten(fn :> promise)
+  }
 }

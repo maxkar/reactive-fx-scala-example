@@ -5,7 +5,9 @@ package ru.maxkar.async
  * @param E error type.
  * @param R result type.
  */
-abstract sealed class PromiseState[+E, +R]
+abstract sealed class PromiseState[+E, +R] {
+  def map[T](fn : R ⇒ T) : PromiseState[E, T]
+}
 
 
 /**
@@ -15,11 +17,17 @@ abstract sealed class PromiseResult[+E, +R] extends PromiseState[E, R]
 
 
 /** State where operation is not complete yet. */
-final case object InProgress extends PromiseState[Nothing, Nothing]
+final case object InProgress extends PromiseState[Nothing, Nothing] {
+  def map[T](fn : Nothing ⇒ T) = InProgress
+}
 
 
 /** Operation failure state. */
-final case class Failure[E](error : E) extends PromiseResult[E, Nothing]
+final case class Failure[E](error : E) extends PromiseResult[E, Nothing] {
+  def map[T](fn : Nothing ⇒ T) = this
+}
 
 /** Operation success state. */
-final case class Success[R](result : R) extends PromiseResult[Nothing, R]
+final case class Success[R](result : R) extends PromiseResult[Nothing, R] {
+  def map[T](fn : R ⇒ T) = Success(fn(result))
+}
