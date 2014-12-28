@@ -54,10 +54,22 @@ package object syntax {
   /** Boxed function applicable to values. */
   implicit class BoxedMonadicFunctionApp[T[_], S, R](val fn : T[S ⇒ T[R]]) extends AnyVal {
     def mmap(v : T[S])(implicit md : Monad[T]) : T[R] =
-      fn ≼ (fv ⇒ fv ≽ v)
+     md.flatten(md.aapply(fn, v))
 
     @inline
     def ≽(v : T[S])(implicit md : Monad[T]) : T[R] = mmap(v)
+  }
+
+
+  /** Magic function application. */
+  implicit class BoxedMonadicFunctioAppToV[T[_], S, R](val fn : T[S ⇒ T[R]]) extends AnyVal {
+    @inline
+    def mmap(v : S)(implicit md : Monad[T]) : T[R] =
+      fn ≽ md.pure(v)
+
+
+    @inline
+    def ≽(v : S)(implicit md : Monad[T]) : T[R] = mmap(v)
   }
 
 
