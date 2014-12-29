@@ -3,8 +3,8 @@ package ru.maxkar.fx
 import javafx.scene._
 import javafx.scene.layout._
 
-import ru.maxkar.lib.reactive.value._
-import ru.maxkar.lib.reactive.value.Behaviour._
+import ru.maxkar.fun.syntax._
+import ru.maxkar.reactive.value._
 
 /** Javafx node operations. */
 object Nodes {
@@ -16,7 +16,7 @@ object Nodes {
       : Node = {
 
     val res = new BorderPane()
-    res.setCenter _ :> ui
+    res.setCenter _ ≻ ui
 
     res
   }
@@ -30,7 +30,7 @@ object Nodes {
       : Region = {
 
     val res = new BorderPane()
-    res.setCenter _ :> ui
+    res.setCenter _ ≻ ui
 
     res
   }

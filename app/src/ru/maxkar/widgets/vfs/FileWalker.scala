@@ -2,9 +2,9 @@ package ru.maxkar.widgets.vfs
 
 import ru.maxkar.async._
 
-import ru.maxkar.lib.reactive.wave._
-import ru.maxkar.lib.reactive.value._
-import ru.maxkar.lib.reactive.value.Behaviour._
+import ru.maxkar.fun.syntax._
+import ru.maxkar.reactive.wave._
+import ru.maxkar.reactive.value._
 
 import ru.maxkar.util.vfs._
 
@@ -19,7 +19,7 @@ final class FileWalker private(
       baseDirectory : DirectoryView) {
 
   import FileWalker._
-  private implicit val ctx = defaultBindContext
+  private implicit val ctx = permanentBind
 
 
   /** Flag indicating that this walker is in active operation. */
@@ -38,7 +38,7 @@ final class FileWalker private(
   /* PUBLIC API. */
 
   /** Items in this file walker, these items are available for the UI. */
-  val items = allEntitiesV :< (ents ⇒ ents.toSeq.sortWith(isBefore))
+  val items = allEntitiesV.behaviour ≺ (ents ⇒ ents.toSeq.sortWith(isBefore))
 
   /** Selected entity model. */
   val selection : Behaviour[FileInfo] = selectionV

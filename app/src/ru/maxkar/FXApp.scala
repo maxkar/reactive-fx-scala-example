@@ -22,8 +22,8 @@ import ru.maxkar.widgets.image.ImageLoaderView
 import ru.maxkar.widgets.zoom.Zoom
 import ru.maxkar.widgets.vfs._
 
-import ru.maxkar.lib.reactive.value.Behaviour
-import ru.maxkar.lib.reactive.value.Behaviour._
+import ru.maxkar.fun.syntax._
+import ru.maxkar.reactive.value._
 
 import scala.collection.JavaConversions._
 
@@ -40,7 +40,7 @@ class FXApp(
 
 
   /** Application-wide lifespan. */
-  private implicit val bindContext = Behaviour.defaultBindContext
+  private implicit val bindContext = permanentBind
 
 
   /** Zoom level presets. */
@@ -73,7 +73,7 @@ class FXApp(
       })
 
 
-    val file = bro.selection :< (item ⇒
+    val file = bro.selection ≺ (item ⇒
       if (item == null)
         null
       else
@@ -88,7 +88,7 @@ class FXApp(
 
     val imageui = ImageLoaderView.autoMake(iohandler, file, zoom)
 
-    val opText = iohandler.operationCount :< (x ⇒ "IO ops: " + x)
+    val opText = iohandler.operationCount ≺ (x ⇒ "IO ops: " + x)
 
     val zoomBox = new ComboBox[Zoom]()
     zoomBox.getItems().addAll(
@@ -102,7 +102,7 @@ class FXApp(
     bottom.getChildren().addAll(
       Texts.simpleText(opText),
       zoomBox,
-      Texts.simpleText(zoomText _ :> imageui.effectiveZoom))
+      Texts.simpleText(zoomText _ ≻ imageui.effectiveZoom))
 
 
     root setBottom bottom

@@ -2,8 +2,8 @@ package ru.maxkar.widgets.vfs
 
 import ru.maxkar.fx.Bridge._
 
-import ru.maxkar.lib.reactive.value._
-import ru.maxkar.lib.reactive.value.Behaviour._
+import ru.maxkar.fun.syntax._
+import ru.maxkar.reactive.value._
 
 import javafx.scene.Node
 import javafx.scene.layout.Region

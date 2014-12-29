@@ -9,11 +9,12 @@ import javafx.util.Callback
 import javafx.collections.ObservableList
 import javafx.collections.FXCollections
 
-import ru.maxkar.lib.reactive.event.{Event ⇒ REvent}
-import ru.maxkar.lib.reactive.event.Trigger
-import ru.maxkar.lib.reactive.wave.Wave
-import ru.maxkar.lib.reactive.value._
-import ru.maxkar.lib.reactive.value.Behaviour._
+
+import ru.maxkar.fun.syntax._
+import ru.maxkar.reactive.value.event.{Event ⇒ REvent}
+import ru.maxkar.reactive.value.event.Trigger
+import ru.maxkar.reactive.wave.Wave
+import ru.maxkar.reactive.value._
 
 import scala.language.implicitConversions
 import scala.collection.JavaConverters._
@@ -71,9 +72,7 @@ object Bridge {
         implicit ctx : BindContext)
       : ObservableList[T] = {
     val inner = FXCollections.observableArrayList[T]()
-    base :< (items ⇒ {
-      inner.setAll(items.asJava)
-    })
+    base ≺ (items ⇒ inner.setAll(items.asJava))
     FXCollections.unmodifiableObservableList(inner)
   }
 
@@ -142,7 +141,7 @@ object Bridge {
     prop.addListener(listener)
     ctx.lifespan.onDispose(() ⇒ prop.removeListener(listener))
 
-    value :< (v ⇒
+    value ≺ (v ⇒
       if (v != prop.getValue)
         psetter(v))
   }

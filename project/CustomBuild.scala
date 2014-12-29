@@ -146,12 +146,9 @@ object CustomBuild extends Build {
       dependsOn(deps.flatMap(x ⇒  x.refs) : _*)
   }
 
-  /* External libraries. */
-  lazy val lib_reactive = lib("lib-reactive")
-
   /* Libraries. */
   lazy val lib_fun = prj("lib/fun")
-  lazy val lib_reactive1 = prj("lib/reactive", lib_fun)
+  lazy val lib_reactive = prj("lib/reactive", lib_fun)
   lazy val lib_async = prj("lib/async", lib_reactive, lib_fun)
 
   /* Projects. */
@@ -161,7 +158,7 @@ object CustomBuild extends Build {
     settings = buildSettings ++ unidocSettings ++ Seq(Tasks.internalName := "root")
   ).aggregate(
     lib_fun,
-    lib_reactive1,
+    lib_reactive,
     lib_async,
     app
   )

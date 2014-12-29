@@ -6,8 +6,9 @@ import javafx.scene.image._
 
 import ru.maxkar.async._
 
-import ru.maxkar.lib.reactive.value._
-import ru.maxkar.lib.reactive.value.Behaviour._
+import ru.maxkar.fun.syntax._
+import ru.maxkar.reactive.value._
+
 
 /**
  * This class is responsible for loading images and keeping
@@ -33,7 +34,7 @@ final class ImageLoader(
   val state : Behaviour[State] = stateV
 
 
-  load _ :> file
+  load _ ≻ file
 
 
   /** Implementations. */

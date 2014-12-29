@@ -60,7 +60,7 @@ final class BindContext(
    * new subcontext would be created allowing for a
    * completely new model.
    */
-  private def subfmap[S, R](
+  def subfmap[S, R](
         fn : (S, BindContext) ⇒ R,
         v : Behaviour[S])
       : Behaviour[R] = {

@@ -1,7 +1,11 @@
 package ru.maxkar.async
 
-import ru.maxkar.lib.reactive.value._
-import ru.maxkar.lib.reactive.value.Behaviour._
+
+import ru.maxkar.fun._
+import ru.maxkar.fun.syntax._
+import ru.maxkar.reactive.value._
+
+
 
 /**
  * Simple asynchronous operation for single-threaded
@@ -16,7 +20,7 @@ import ru.maxkar.lib.reactive.value.Behaviour._
  * @param R result type.
  */
 trait Promise[+R] {
-  private implicit val ctx = defaultBindContext
+  private implicit val ctx = permanentBind
 
   /** Current promise state. */
   val state : Behaviour[PromiseState[R]]
@@ -24,7 +28,7 @@ trait Promise[+R] {
 
   /** Infokes a function when promise is complete. */
   final def onComplete(fn : PromiseResult[R] ⇒ Unit) : Unit =
-    state :< (_ match {
+    state ≺ (_ match {
         case a@Success(x) ⇒ fn(a)
         case a@Failure(x) ⇒ fn(a)
         case InProgress ⇒ ()
@@ -33,7 +37,7 @@ trait Promise[+R] {
 
   /** Invokes a function on promise success. */
   final def onSuccess(cb : R ⇒ Unit) : Unit =
-    state :< (_ match {
+    state ≺ (_ match {
       case a@Success(x) ⇒ cb(x)
       case _ ⇒ ()
     })
@@ -41,7 +45,7 @@ trait Promise[+R] {
 
   /** Invokes a function on promise failure. */
   final def onFailure(cb : Throwable ⇒ Unit) : Unit =
-    state :< (_ match {
+    state ≺ (_ match {
       case Failure(x) ⇒ cb(x)
       case _ ⇒ ()
     })
@@ -54,7 +58,7 @@ trait Promise[+R] {
  */
 object Promise {
   import scala.language.implicitConversions
-  implicit val lifespan = Behaviour.defaultBindContext
+  private implicit val ctx = permanentBind
 
   /** Creates a new promise from the behaviour. */
   def fromBehaviour[R](b : Behaviour[PromiseState[R]]) : Promise[R] =

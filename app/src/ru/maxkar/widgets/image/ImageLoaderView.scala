@@ -5,8 +5,9 @@ import javafx.scene.layout._
 import javafx.scene.text.Text
 import javafx.scene.control.ProgressIndicator
 
-import ru.maxkar.lib.reactive.value._
-import ru.maxkar.lib.reactive.value.Behaviour._
+import ru.maxkar.fun.syntax._
+import ru.maxkar.reactive.value._
+import ru.maxkar.reactive.value.syntax._
 
 import ru.maxkar.widgets.zoom.Zoom
 
@@ -23,13 +24,13 @@ final class ImageLoaderView(
 
 
   /** Rendered image. */
-  private val renderState = image :/< render
+  private val renderState = image ≺~ render
 
 
 
   /** Image loader view. */
   val ui : Node =
-    Nodes regionOf (getUI _ :> renderState)
+    Nodes regionOf (getUI _ ≻ renderState)
 
 
 
@@ -38,7 +39,7 @@ final class ImageLoaderView(
    * in all other cases.
    */
   val effectiveZoom : Behaviour[Option[Double]] =
-    effectiveZoomOf _ :/>> renderState
+    effectiveZoomOf _ ~≽ renderState
 
 
 
@@ -103,7 +104,7 @@ object ImageLoaderView {
       Behaviour[Option[Double]] = {
     implicit val c = ctx
     state match {
-      case UIImage(x) ⇒ x.effectiveZoom :< (z ⇒ Some(z))
+      case UIImage(x) ⇒ x.effectiveZoom ≺ (z ⇒ Some(z))
       case _ ⇒ const(None)
     }
   }

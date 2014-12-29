@@ -10,8 +10,8 @@ import ru.maxkar.fx.Bridge._
 
 import ru.maxkar.widgets.zoom._
 
-import ru.maxkar.lib.reactive.value._
-import ru.maxkar.lib.reactive.value.Behaviour._
+import ru.maxkar.fun.syntax._
+import ru.maxkar.reactive.value._
 
 /**
  * Pane used to display one (and only one) image.
@@ -49,8 +49,8 @@ final class ImagePane(
 
   /** Effective zoom value. */
   val effectiveZoom =
-    calcEffectiveZoom _ :> zoom :> sp.widthProperty :> sp.heightProperty
-  effectiveZoom :< applyZoom
+    calcEffectiveZoom _ ≻ zoom ≻ sp.widthProperty ≻ sp.heightProperty
+  effectiveZoom ≺ applyZoom
 
 
   /* METHODS. */

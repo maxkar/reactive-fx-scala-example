@@ -2,8 +2,8 @@ package ru.maxkar.widgets.zoom
 
 import javafx.scene.input._
 
-import ru.maxkar.lib.reactive.value._
-import ru.maxkar.lib.reactive.value.Behaviour._
+import ru.maxkar.fun.syntax._
+import ru.maxkar.reactive.value._
 
 import ru.maxkar.fx.Events
 
