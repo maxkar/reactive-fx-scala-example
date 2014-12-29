@@ -36,7 +36,7 @@ final class AsyncExecutor(runPlatf : Runnable ⇒ Unit) extends Promising {
       })
     }).start()
 
-    Promise.fromBehaviour(res)
+    res
   }
 
 
@@ -71,6 +71,6 @@ final class AsyncExecutor(runPlatf : Runnable ⇒ Unit) extends Promising {
       case t : Throwable ⇒ fail(t)
     }
 
-    Promise.fromBehaviour(res)
+    res
   }
 }

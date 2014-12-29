@@ -11,18 +11,47 @@ import ru.maxkar.reactive.value._
  * Advanced options for async operations.
  */
 package object async {
+  import scala.language.implicitConversions
+
   private implicit val ctx = permanentBind
 
+  /** Promise type. */
+  type Promise[T] = Behaviour[PromiseState[T]]
+
+  /** Monad for the promise. */
   implicit object PromiseAsMonad extends Monad[Promise] {
-    override def pure[V](v : V) : Promise[V] =
-      Promise.immediate(v)
+    override def pure[V](v : V) : Promise[V] = immediate(v)
 
 
     override def bind[S, R](fn : S ⇒ Promise[R], v : Promise[S]) : Promise[R] =
-      Promise.fromBehaviour(ctx.flatten(v.state ≺ (vv ⇒ vv match {
-        case Failure(x) ⇒ const(Failure(x))
-        case InProgress ⇒ const(InProgress)
-        case Success(x) ⇒ fn(x).state
-      })))
+      ctx.bind((vv : PromiseState[S]) ⇒ vv match {
+        case Failure(x) ⇒ const[PromiseState[R]](Failure(x))
+        case InProgress ⇒ const[PromiseState[R]](InProgress)
+        case Success(x) ⇒ fn(x)
+      }, v)
   }
+
+
+  implicit class PromiseOps[R](val v : Promise[R]) extends AnyVal {
+    def onComplete(cb : PromiseResult[R] ⇒ Unit) : Unit =
+      ctx.fmap((st : PromiseState[R]) ⇒ st match {
+        case a@Failure(x) ⇒ cb(a)
+        case a@Success(x) ⇒ cb(a)
+        case _ ⇒ ()
+      }, v)
+
+
+     @inline
+     def onSuccess(cb : R ⇒ Unit) : Unit = cb ≻ v
+
+
+     def onFailure(cb : Throwable ⇒ Unit) : Unit =
+       ctx.fmap((st : PromiseState[R]) ⇒ st match {
+         case Failure(x) ⇒ cb(x)
+         case _ ⇒ ()
+       }, v)
+  }
+
+
+  def immediate[V](v : V) : Promise[V] = const(Success(v))
 }

@@ -95,7 +95,7 @@ final class FileWalker private(
    * theer are no active operations. */
   def close() : Promise[Unit] = {
     if (inOp)
-      return Promise.immediate(())
+      return immediate(())
     inOp = true
     val res = async {
       var p = curDirectoryV.value

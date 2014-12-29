@@ -9,7 +9,6 @@ import java.nio.file.Paths
 import java.nio.file.attribute.{PosixFilePermissions ⇒ Perms}
 
 import ru.maxkar.async._
-import ru.maxkar.async.Promise._
 
 import ru.maxkar.fx._
 
