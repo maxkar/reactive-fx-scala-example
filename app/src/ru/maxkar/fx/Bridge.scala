@@ -1,19 +1,9 @@
 package ru.maxkar.fx
 
-import javafx.event.Event
-import javafx.event.EventHandler
-
-import javafx.beans.value._
-import javafx.util.Callback
-
-import javafx.collections.ObservableList
-import javafx.collections.FXCollections
-
+import java.awt.event.ActionEvent
+import java.awt.event.ActionListener
 
 import ru.maxkar.fun.syntax._
-import ru.maxkar.reactive.value.event.{Event ⇒ REvent}
-import ru.maxkar.reactive.value.event.Trigger
-import ru.maxkar.reactive.wave.Wave
 import ru.maxkar.reactive.value._
 
 import scala.language.implicitConversions
@@ -35,131 +25,11 @@ object Bridge {
     }
 
 
-  /** Event handler converter. */
-  implicit def fn2handler[T <: Event](fn : T ⇒ Unit) : EventHandler[T] =
-    new EventHandler[T] {
-      override def handle(evt : T) : Unit = fn(evt)
+
+  /** Conversion between block and action handler. */
+  implicit def actionHandler(handler : ActionEvent ⇒ Unit) : ActionListener =
+    new ActionListener() {
+      override def actionPerformed(e : ActionEvent) : Unit =
+        handler(e)
     }
-
-
-
-  /** Another event handler converter. */
-  implicit def fno2handler[T <: Event](fn : () ⇒ Unit) : EventHandler[T] =
-    new EventHandler[T] {
-      override def handle(evt : T) : Unit = fn()
-    }
-
-
-
-  /** Callback converter. */
-  implicit def fn2cb[A, R](fn : A ⇒ R) : Callback[A, R] =
-    new Callback[A, R] {
-      override def call(a : A) : R = fn(a)
-    }
-
-
-
-  /** Block event handler converter. */
-  implicit def evt[T <: Event](block : ⇒ Unit) : EventHandler[T] =
-    new EventHandler[T] {
-      override def handle(evt : T) : Unit = block
-    }
-
-
-  /** Implicit conversion from list to observable list. */
-  implicit def seqb2obsl[T](
-        base : Behaviour[Seq[T]])(
-        implicit ctx : BindContext)
-      : ObservableList[T] = {
-    val inner = FXCollections.observableArrayList[T]()
-    base ≺ (items ⇒ inner.setAll(items.asJava))
-    FXCollections.unmodifiableObservableList(inner)
-  }
-
-
-  private class Prop2TriggerBridge[T](trigger : Trigger)
-      extends ChangeListener[T] {
-    override def changed(
-          v : ObservableValue[_ <: T],
-          oldValue : T,
-          newValue : T)
-        : Unit =
-      Wave.group(w ⇒ trigger.trigger(w))
-  }
-
-
-  /** Converts property into behaviour. */
-  implicit def property2behaviour[T](
-        prop : ObservableValue[T])(
-        implicit ctx : BindContext)
-      : Behaviour[T] = {
-    val trigger = REvent.trigger(ctx.update)
-    val listener = new Prop2TriggerBridge[T](trigger)
-
-    prop.addListener(listener)
-    ctx.lifespan.onDispose(() ⇒ prop.removeListener(listener))
-
-    new Behaviour[T] {
-      override def value() : T = prop.getValue()
-      override val change = trigger.event
-    }
-  }
-
-
-
-  implicit class ObservableSeqExt[T](val v : Seq[T]) extends AnyVal {
-    def asFXList() : ObservableList[T] =
-      FXCollections.observableList(v.toList.asJava)
-  }
-
-
-
-  private class Prop2SetterBridge[T](setter : T ⇒ Unit, guard : Behaviour[T])
-      extends ChangeListener[T] {
-    override def changed(
-          v : ObservableValue[_ <: T],
-          oldValue : T,
-          newValue : T)
-        : Unit =
-      if (guard.value != newValue)
-        setter(newValue)
-  }
-
-
-
-  /**
-   * Binding for read-only properties with the setter.
-   */
-  def bindRO[T](
-        prop : ObservableValue[T],
-        psetter : T ⇒ Unit,
-        value : Behaviour[T],
-        setter : T ⇒ Unit)(
-        implicit ctx : BindContext)
-      : Unit = {
-    val listener = new Prop2SetterBridge[T](setter, value)
-    prop.addListener(listener)
-    ctx.lifespan.onDispose(() ⇒ prop.removeListener(listener))
-
-    value ≺ (v ⇒
-      if (v != prop.getValue)
-        psetter(v))
-  }
-
-
-
-  /**
-   * Creates an unidirectional binding between FX model and
-   * corresponding reactive value.
-   * @param prop javaFX property model
-   * @param value reactive value, source for the model.
-   * @param setter value setter to invoke when FX model changes.
-   */
- def bind[T](
-      prop : WritableValue[T] with ObservableValue[T],
-      value : Behaviour[T],
-      setter : T ⇒ Unit)(
-      implicit ctx : BindContext)
-    : Unit =
-   bindRO(prop, prop.setValue, value, setter)
 }

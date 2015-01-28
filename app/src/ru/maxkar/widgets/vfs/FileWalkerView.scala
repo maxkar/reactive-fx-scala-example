@@ -1,5 +1,19 @@
 package ru.maxkar.widgets.vfs
 
+import java.awt.image.BufferedImage
+import java.awt.Component
+
+import javax.swing.JComponent
+import javax.swing.JList
+import javax.swing.JLabel
+import javax.swing.JScrollPane
+import javax.swing.DefaultListCellRenderer
+import javax.swing.ListCellRenderer
+import javax.swing.ImageIcon
+
+import javax.swing.event.ListSelectionListener
+import javax.swing.event.ListSelectionEvent
+
 import ru.maxkar.fx.Bridge._
 
 import javafx.beans.value._
@@ -7,13 +21,6 @@ import javafx.beans.value._
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
 
-import javafx.scene.Node
-import javafx.scene.layout.Region
-import javafx.scene.control.ListView
-import javafx.scene.control.ListCell
-import javafx.scene.image._
-import javafx.collections.FXCollections
-import scala.collection.JavaConverters._
 
 /**
  * File walker renderer.
@@ -25,14 +32,16 @@ object FileWalkerView {
    */
   def make(
         walker : FileWalker,
-        dirIcon : Image = null,
-        archiveIcon : Image = null,
-        imageIcon : Image = null,
-        imageUnknown : Image = null)(
+        dirIcon : BufferedImage = null,
+        archiveIcon : BufferedImage = null,
+        imageIcon : BufferedImage = null,
+        imageUnknown : BufferedImage = null)(
         implicit ctx : BindContext)
-      : Region = {
+      : JComponent = {
 
-    def iconForType(ft : FileType) : Image =
+    val cellRenderer = new DefaultListCellRenderer()
+
+    def iconForType(ft : FileType) : BufferedImage =
       ft match {
         case FileType.ParentDirectory | FileType.Directory ⇒ dirIcon
         case FileType.Container ⇒ archiveIcon
@@ -40,70 +49,68 @@ object FileWalkerView {
         case _ ⇒ imageUnknown
       }
 
-    def mkCell(view : ListView[FileInfo]) : ListCell[FileInfo] =
-      new ListCell[FileInfo] {
-        override def updateItem(item : FileInfo, empty : Boolean) : Unit = {
-          super.updateItem(item, empty)
-          if (item == null || empty) {
-            setText(null)
-            setGraphic(null)
-            return
-          }
-          setText(item.name)
-          setGraphic(new ImageView(iconForType(item.fileType)))
-        }
-      }
-
-    val ilist = FXCollections.observableArrayList[FileInfo](walker.items.value.asJava)
-    val list = new ListView(ilist)
-    list.setCellFactory(mkCell _)
 
     var updating = false
+    val list = new JList[FileInfo](walker.items.value.toArray)
 
-    def toFX(items : Seq[FileInfo])(sel : FileInfo) : Unit = {
+    def syncModels(items : Seq[FileInfo], sel : FileInfo) : Unit = {
       updating = true
-
       try {
-        if (walker.items.change.value) {
-          ilist.setAll(items.asJava)
-        }
+        val lc = walker.items.change.value
+        val sc = walker.selection.change.value
 
-        if (walker.items.change.value || walker.selection.change.value) {
-          val selmodel = list.getSelectionModel()
-          if (selmodel.getSelectedItem() != sel)
-            selmodel.select(sel)
+        if (lc)
+          list.setListData(walker.items.value.toArray)
 
-          if (walker.items.change.value) {
-            if (sel != null) {
-              val idx = list.getSelectionModel().getSelectedIndex()
-              println(idx)
-              if (idx < items.length - 1)
-                list.scrollTo(idx + 1)
-              if (idx > 0)
-                list.scrollTo(idx - 1)
-              list.scrollTo(sel)
-            } else
-              list.scrollTo(0)
-          }
-        }
-      } finally {
+        if (lc || sc)
+          list.setSelectedValue(walker.selection.value(), true)
+
+        val si = list.getSelectedIndex()
+        if (si > 0)
+          list.ensureIndexIsVisible(si - 1)
+        if (si < items.length - 1)
+          list.ensureIndexIsVisible(si + 1)
+        list.ensureIndexIsVisible(si)
+
+      }  finally {
         updating = false
       }
     }
-    toFX _ ≻ walker.items ≻ walker.selection
 
-    val listener = new ChangeListener[FileInfo] {
-      override def changed(v : ObservableValue[_ <: FileInfo],
-            oldValue : FileInfo, newValue : FileInfo)
-          : Unit =
-        if (!updating && walker.selection.value != newValue)
-          walker.select(newValue)
+
+    (syncModels _).curried ≻ walker.items ≻ walker.selection
+
+
+    list addListSelectionListener new ListSelectionListener() {
+      override def valueChanged(e : ListSelectionEvent) : Unit = {
+        if (updating)
+          return
+
+        val idx = list.getSelectedIndex()
+        walker.select(
+          if (idx < 0)
+            null
+          else
+            walker.items.value()(idx))
+      }
     }
-    list.getSelectionModel().selectedItemProperty().addListener(listener)
-    ctx.lifespan.onDispose(() ⇒
-      list.getSelectionModel().selectedItemProperty().removeListener(listener))
 
 
-    list
+    list setCellRenderer new ListCellRenderer[FileInfo] {
+      override def getListCellRendererComponent(
+            list : JList[_ <: FileInfo], value : FileInfo, idx : Int,
+            isSelected : Boolean, hasFocus : Boolean) : Component = {
+        val label =
+          cellRenderer.getListCellRendererComponent(
+            list, value : Any, idx, isSelected, hasFocus)
+          .asInstanceOf[JLabel]
+        label.setText(value.name)
+        label.setIcon(new ImageIcon(iconForType(value.fileType)))
+        label
+      }
+    }
+
+    val res = new JScrollPane(list)
+    res
   }
 }

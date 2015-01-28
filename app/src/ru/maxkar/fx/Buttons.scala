@@ -1,16 +1,21 @@
 package ru.maxkar.fx
 
-import javafx.event.ActionEvent
-import javafx.scene._
-import javafx.scene.control._
 
-import Bridge._
+import javax.swing.JComponent
+import javax.swing.JButton
+
+import java.awt.event.ActionEvent
+import java.awt.event.ActionListener
+
 
 /** Button factories. */
 object Buttons {
-  def simplestButton(title : String, action : ⇒ Unit) : Node = {
-    val res = new Button(title)
-    res setOnAction evt{action}
+  def simplestButton(title : String, action : ⇒ Unit) : JComponent = {
+    val res = new JButton(title)
+    res addActionListener new ActionListener {
+      override def actionPerformed(e : ActionEvent) : Unit =
+        action
+    }
     res
   }
 }

@@ -1,11 +1,12 @@
 package ru.maxkar.widgets.zoom
 
-import javafx.scene.input._
+import java.awt.event.KeyEvent
+import java.awt.event.InputEvent
+import java.awt.event.KeyListener
+import java.awt.event.KeyAdapter
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
-
-import ru.maxkar.fx.Events
 
 
 /**
@@ -165,17 +166,17 @@ object Zoom {
         presets : Seq[Double],
         effectiveZoom : Option[Double],
         selectedZoom : Zoom,
-        code : KeyCode)
+        event : KeyEvent)
       : Option[Zoom] = {
     val czoom = subEffectiveZoom(effectiveZoom, selectedZoom)
-    code match {
-      case KeyCode.PLUS | KeyCode.ADD ⇒
+    event.getKeyCode() match {
+      case KeyEvent.VK_PLUS | KeyEvent.VK_ADD ⇒
         czoom.map(z ⇒ Zoom.Fixed(nextPresetZoom(presets, z)))
-      case KeyCode.MINUS | KeyCode.UNDERSCORE | KeyCode.SUBTRACT | KeyCode.EQUALS ⇒
+      case KeyEvent.VK_MINUS | KeyEvent.VK_UNDERSCORE | KeyEvent.VK_SUBTRACT | KeyEvent.VK_EQUALS ⇒
         czoom.map(z ⇒ Zoom.Fixed(prevPresetZoom(presets, z)))
-      case KeyCode.DIVIDE ⇒ Some(Zoom.Fixed(1.0))
-      case KeyCode.MULTIPLY ⇒ Some(Zoom.Fit)
-      case KeyCode.INSERT ⇒ Some(Zoom.SmartFit)
+      case KeyEvent.VK_DIVIDE ⇒ Some(Zoom.Fixed(1.0))
+      case KeyEvent.VK_MULTIPLY ⇒ Some(Zoom.Fit)
+      case KeyEvent.VK_INSERT ⇒ Some(Zoom.SmartFit)
       case _ ⇒ None
     }
   }
@@ -192,34 +193,44 @@ object Zoom {
         presets : Seq[Double],
         effectiveZoom : Behaviour[Double],
         callback : Zoom ⇒ Unit)
-      : KeyEvent ⇒ Unit = {
+      : KeyListener =
+    new KeyAdapter() {
+      override def keyPressed(evt : KeyEvent) {
+        if (isModifierDown(evt))
+          return
 
-    def res(evt : KeyEvent) {
-      if (Events.modifierDown(evt))
-        return
-
-      evt.getCode match {
-        case KeyCode.PLUS | KeyCode.ADD ⇒
-          callback(Zoom.Fixed(
-            nextPresetZoom(presets, effectiveZoom.value)))
-          evt.consume()
-        case KeyCode.MINUS | KeyCode.UNDERSCORE | KeyCode.SUBTRACT | KeyCode.EQUALS ⇒
-          callback(Zoom.Fixed(
-            prevPresetZoom(presets, effectiveZoom.value)))
-          evt.consume()
-        case KeyCode.DIVIDE ⇒
-          callback(Zoom.Fixed(1.0))
-          evt.consume()
-        case KeyCode.MULTIPLY ⇒
-          callback(Zoom.Fit)
-          evt.consume()
-        case KeyCode.INSERT ⇒
-          callback(Zoom.SmartFit)
-          evt.consume()
-        case _ ⇒ ()
+        evt.getKeyCode() match {
+          case KeyEvent.VK_PLUS | KeyEvent.VK_ADD ⇒
+            callback(Zoom.Fixed(
+              nextPresetZoom(presets, effectiveZoom.value)))
+            evt.consume()
+          case KeyEvent.VK_MINUS | KeyEvent.VK_UNDERSCORE | KeyEvent.VK_SUBTRACT | KeyEvent.VK_EQUALS ⇒
+            callback(Zoom.Fixed(
+              prevPresetZoom(presets, effectiveZoom.value)))
+            evt.consume()
+          case KeyEvent.VK_DIVIDE ⇒
+            callback(Zoom.Fixed(1.0))
+            evt.consume()
+          case KeyEvent.VK_MULTIPLY ⇒
+            callback(Zoom.Fit)
+            evt.consume()
+          case KeyEvent.VK_INSERT ⇒
+            callback(Zoom.SmartFit)
+            evt.consume()
+          case _ ⇒ ()
+        }
       }
     }
 
-    res
+
+
+  private def isModifierDown(evt : KeyEvent) : Boolean = {
+    val mask =
+      InputEvent.ALT_DOWN_MASK |
+      InputEvent.ALT_GRAPH_DOWN_MASK |
+      InputEvent.CTRL_DOWN_MASK |
+      InputEvent.META_DOWN_MASK |
+      InputEvent.SHIFT_DOWN_MASK
+    return (evt.getModifiers() & mask) == 0
   }
 }

@@ -1,9 +1,8 @@
 package ru.maxkar.widgets.image
 
-import javafx.scene._
-import javafx.scene.layout._
-import javafx.scene.text.Text
-import javafx.scene.control.ProgressIndicator
+import javax.swing.JComponent
+import javax.swing.JPanel
+import javax.swing.JTextArea
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
@@ -29,8 +28,8 @@ final class ImageLoaderView(
 
 
   /** Image loader view. */
-  val ui : Node =
-    Nodes regionOf (getUI _ ≻ renderState)
+  val ui : JComponent =
+    Nodes contentOf (getUI _ ≻ renderState)
 
 
 
@@ -55,16 +54,19 @@ final class ImageLoaderView(
       case ImageLoader.Ready(null) ⇒
         UIOther(null)
       case ImageLoader.Ready(x) ⇒
-        UIImage(new ImagePane(x, zoom))
+        UIImage(ImagePane.render(x, zoom))
       case ImageLoader.Loading ⇒
-        UIOther(new ProgressIndicator())
+        UIOther(new JPanel())
+        //UIOther(new ProgressIndicator())
       case ImageLoader.LoadError(e) ⇒
         val msg =
           if (e == null)
             "No Image loaded, bad format?"
           else
             Exceptions.fullException(e)
-        UIOther(new Text(msg))
+        val ta = new JTextArea(msg)
+        ta setEditable false
+        UIOther(ta)
     }
   }
 }
@@ -80,14 +82,14 @@ object ImageLoaderView {
 
   private abstract sealed class UIState
   private case class UIImage(img : ImagePane) extends UIState
-  private case class UIOther(ui : Node) extends UIState
+  private case class UIOther(ui : JComponent) extends UIState
 
 
 
   /**
    * Calculates an UI for the state.
    */
-  private def getUI(state : UIState) : Node =
+  private def getUI(state : UIState) : JComponent =
     state match {
       case UIImage(x) ⇒ x.ui
       case UIOther(x) ⇒ x

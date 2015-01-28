@@ -2,39 +2,46 @@ package ru.maxkar
 
 import java.io.File
 
-import javafx.application.Application
-import javafx.application.Platform
-import javafx.geometry._
-import javafx.stage._
-import javafx.scene._
-import javafx.scene.control._
-import javafx.scene.layout._
-import javafx.scene.input._
-import javafx.scene.image.Image
+import java.awt.image.BufferedImage
+import java.awt.BorderLayout
+import java.awt.FlowLayout
+
+import java.awt.event.KeyListener
+import java.awt.event.KeyAdapter
+import java.awt.event.KeyEvent
+import java.awt.event.WindowAdapter
+import java.awt.event.WindowEvent
+import java.awt.event.ActionEvent
+
+import javax.swing.JComponent
+import javax.swing.JFrame
+import javax.swing.JPanel
+import javax.swing.JFileChooser
+import javax.swing.JSplitPane
+import javax.swing.JComboBox
+import javax.swing.WindowConstants
+import javax.swing.KeyStroke
+import javax.swing.AbstractAction
 
 
 import ru.maxkar.fx._
 import ru.maxkar.fx.Bridge._
 
-
-import ru.maxkar.widgets.image.ImageLoaderView
-
-import ru.maxkar.widgets.zoom.Zoom
+import ru.maxkar.util.vfs._
 import ru.maxkar.widgets.vfs._
+import ru.maxkar.widgets.zoom.Zoom
+import ru.maxkar.widgets.image.ImageLoaderView
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
 
 import scala.collection.JavaConversions._
 
-import ru.maxkar.util.vfs._
-import ru.maxkar.widgets.vfs._
-
 
 class FXApp(
       iohandler : AsyncExecutor,
       bro : FileWalker,
-      fsRenderer : (Image, Image, Image, Image),
+      fsRenderer : (BufferedImage, BufferedImage, BufferedImage, BufferedImage),
       shutdownHandler : () ⇒ Unit) {
   import FXApp._
 
@@ -49,13 +56,14 @@ class FXApp(
 
 
   def start() : Unit = {
-    var primaryStage = new Stage()
-    val root = new BorderPane()
-    val fc = new FileChooser()
+    var primaryStage = new JFrame("Image viewer")
+    val root = new JPanel()
+    root setLayout new BorderLayout()
+    primaryStage setContentPane root
 
-    val cnt = new SplitPane()
+    val fc = new JFileChooser()
 
- //   val tmp = variable[widgets.vfs.BrowserViewRenderer.Item](null)
+    val cnt = new JSplitPane()
 
     val curFile = variable[DirectoryEntry](null)
     val fsRender =
@@ -63,14 +71,12 @@ class FXApp(
         fsRenderer._1, fsRenderer._2, fsRenderer._3, fsRenderer._4)
     fsRender.requestFocus()
 
-
-    fsRender.addEventFilter(KeyEvent.KEY_PRESSED,
-      (e : KeyEvent) ⇒ {
-        if (e.getCode == KeyCode.ENTER) {
-          e.consume()
-          bro.open()
-        }
-      })
+    root.getInputMap(JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT)
+      .put(KeyStroke.getKeyStroke(KeyEvent.VK_ENTER, 0), "navfs")
+    root.getActionMap.put("navfs", new AbstractAction() {
+      override def actionPerformed(e : ActionEvent) : Unit =
+        bro.open()
+    })
 
 
     val file = bro.selection ≺ (item ⇒
@@ -90,49 +96,43 @@ class FXApp(
 
     val opText = iohandler.operationCount ≺ (x ⇒ "IO ops: " + x)
 
-    val zoomBox = new ComboBox[Zoom]()
-    zoomBox.getItems().addAll(
-      (Zoom.SmartFit +: Zoom.Fit +: zoomLevels.map(x ⇒ Zoom.Fixed(x))))
-    bind(zoomBox.valueProperty, zoom, zoom.set)
+    val zooms = Zoom.SmartFit +: Zoom.Fit +: zoomLevels.map(Zoom.Fixed(_))
+    val zoomBox = Controls.combo[Zoom](zooms, zoom, zoom.set)
 
-    val bottom = new HBox()
-    bottom setSpacing 10
-    bottom setPadding new Insets(0, 10, 0, 10)
-    bottom setAlignment Pos.CENTER_LEFT
-    bottom.getChildren().addAll(
-      Texts.simpleText(opText),
-      zoomBox,
-      Texts.simpleText(zoomText _ ≻ imageui.effectiveZoom))
+    val bottom = new JPanel()
+    bottom setLayout new FlowLayout(FlowLayout.LEADING)
+    bottom add Texts.simpleText(opText)
+    bottom add zoomBox
+    bottom add Texts.simpleText(zoomText _ ≻ imageui.effectiveZoom)
 
+    root.add(bottom, BorderLayout.PAGE_END)
+    cnt setLeftComponent fsRender
+    cnt setRightComponent imageui.ui
 
-    root setBottom bottom
+    root.add(cnt, BorderLayout.CENTER)
 
-    cnt.getItems.addAll(fsRender, imageui.ui)
-    root setCenter cnt
-
-
-    root.addEventFilter(KeyEvent.KEY_PRESSED,
-      (e : KeyEvent) ⇒ {
+    root.addKeyListener(new KeyAdapter() {
+      override def keyPressed(e : KeyEvent) : Unit = {
         val newZoom = Zoom.zoomForShortcut(
-          zoomLevels, imageui.effectiveZoom.value, zoom.value,
-          e.getCode)
+          zoomLevels, imageui.effectiveZoom.value, zoom.value, e)
         newZoom match {
           case Some(x) ⇒
             zoom set x
             e.consume()
           case _ ⇒ ()
         }
-      })
+      }})
 
-    primaryStage.setOnCloseRequest((e : WindowEvent) ⇒ {
-      e.consume()
-      shutdownHandler()
-    })
+    primaryStage addWindowListener new WindowAdapter() {
+      override def windowClosing(e : WindowEvent) : Unit = {
+        shutdownHandler()
+        primaryStage.dispose()
+      }
+    }
+    primaryStage setDefaultCloseOperation WindowConstants.DO_NOTHING_ON_CLOSE
 
-    val scene = new Scene(root, 500, 500)
-    primaryStage setTitle "JavaFX Scene Graph Demo"
-    primaryStage setScene scene
-    primaryStage.show()
+    primaryStage.pack()
+    primaryStage setVisible true
   }
 }
 

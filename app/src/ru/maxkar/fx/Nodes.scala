@@ -1,7 +1,9 @@
 package ru.maxkar.fx
 
-import javafx.scene._
-import javafx.scene.layout._
+
+import java.awt.BorderLayout
+import javax.swing.JComponent
+import javax.swing.JPanel
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
@@ -11,26 +13,26 @@ object Nodes {
 
   /** Creates a node which have a content of the target node. */
   def contentOf(
-        ui : Behaviour[Node])(
+        ui : Behaviour[JComponent])(
         implicit ctx : BindContext)
-      : Node = {
+      : JComponent = {
 
-    val res = new BorderPane()
-    res.setCenter _ ≻ ui
+    var last : JComponent = null
 
-    res
-  }
+    val res = new JPanel()
+    res setLayout new BorderLayout()
 
+    def update(nc : JComponent) : Unit = {
+      if (last != null)
+        res.remove(last)
+      last = nc
+      if (nc != null)
+        res.add(nc, BorderLayout.CENTER)
+      res.revalidate()
+      res.repaint()
+    }
 
-
-  /** Creates a region which have a content of the target node. */
-  def regionOf(
-        ui : Behaviour[Node])(
-        implicit ctx : BindContext)
-      : Region = {
-
-    val res = new BorderPane()
-    res.setCenter _ ≻ ui
+    ui ≺ update
 
     res
   }

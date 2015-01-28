@@ -2,6 +2,7 @@ package ru.maxkar.fx
 
 import ru.maxkar.async._
 import ru.maxkar.fx.Bridge._
+
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
 

@@ -8,18 +8,17 @@ import java.nio.file.Path
 import java.nio.file.Paths
 import java.nio.file.attribute.{PosixFilePermissions ⇒ Perms}
 
+import java.awt.image.BufferedImage
+import java.awt.BorderLayout
+
+import javax.swing.SwingUtilities
+import javax.swing.JLabel
+import javax.swing.JFrame
+
 import ru.maxkar.async._
 
 import ru.maxkar.fx._
-
-import javafx.application.Application
-import javafx.application.Platform
-import javafx.scene.layout._
-
-import javafx.stage._
-import javafx.scene.text._
-import javafx.scene._
-import javafx.scene.image.Image
+import ru.maxkar.fx.Bridge._
 
 import ru.maxkar.fun._
 import ru.maxkar.fun.syntax._
@@ -31,17 +30,17 @@ import ru.maxkar.widgets.image.ImageLoader
 import scala.collection.mutable.Stack
 
 
-final class Loader extends Application {
-  override def start(primaryStage : Stage) : Unit = {
+final class Loader {
+  def start() : Unit = {
+    val loadingWindow = new JFrame("Loading")
+
     val shutdownHandlers = new Stack[() ⇒ Promise[Any]]
-    val iohandler = new AsyncExecutor(Platform.runLater)
+    val iohandler = new AsyncExecutor(SwingUtilities.invokeLater)
     shutdownHandlers.push(iohandler.shutdown)
 
-    val root = new BorderPane()
-    root setCenter new Text("Loading")
-
-    primaryStage setScene new Scene(root, 300, 100)
-    primaryStage.show()
+    loadingWindow.getContentPane().add(new JLabel("Loading"))
+    loadingWindow.pack()
+    loadingWindow setVisible true
 
     val fs = iohandler(Loader.createMountPoint())
     fs ≺ (mp ⇒
@@ -56,11 +55,11 @@ final class Loader extends Application {
         new java.io.File(".")))
     walker ≺ (w ⇒ shutdownHandlers.push(() ⇒ w.close()))
 
-    def launch(w : FileWalker)(style : (Image, Image, Image, Image)) : Unit = {
+    def launch(w : FileWalker)(style : (BufferedImage, BufferedImage, BufferedImage, BufferedImage)) : Unit = {
       new FXApp(
         iohandler, w, style,
         () ⇒ Loader.shutdown(shutdownHandlers)).start()
-      primaryStage.hide()
+      loadingWindow.dispose()
     }
     launch _ ≻ walker ≻ style
   }
@@ -73,11 +72,11 @@ final class Loader extends Application {
  */
 object Loader extends App {
   override def main(args : Array[String]) : Unit =
-    Application.launch(classOf[Loader], args: _*)
+    SwingUtilities.invokeLater(() ⇒ new Loader().start())
 
 
 
-  def prepareFSRenderer() : (Image, Image, Image, Image) = {
+  def prepareFSRenderer() : (BufferedImage, BufferedImage, BufferedImage, BufferedImage) = {
     val base = "/usr/share/icons/gnome/24x24/"
     (mkImage(base + "places/folder.png"),
      mkImage(base + "mimetypes/folder_tar.png"),
@@ -95,7 +94,7 @@ object Loader extends App {
 
 
 
-  private def mkImage(path : String) : Image =
+  private def mkImage(path : String) : BufferedImage =
     ImageLoader.loadFile(new File(path))
 
 
@@ -103,10 +102,8 @@ object Loader extends App {
   /** Shutdowns platform completely. */
   def shutdown(handlers : Stack[() ⇒ Promise[Any]]) : Unit = {
     try {
-    if (handlers.isEmpty)
-      Platform.exit()
-    else
-      handlers.pop()().onComplete(_ ⇒ shutdown(handlers))
+      if (!handlers.isEmpty)
+        handlers.pop()().onComplete(_ ⇒ shutdown(handlers))
     } catch {
       case e : Throwable ⇒ e.printStackTrace()
     }

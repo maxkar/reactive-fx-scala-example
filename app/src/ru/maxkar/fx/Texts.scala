@@ -1,7 +1,8 @@
 package ru.maxkar.fx
 
-import javafx.scene._
-import javafx.scene.text._
+
+import javax.swing.JComponent
+import javax.swing.JTextArea
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
@@ -16,9 +17,10 @@ object Texts {
   def simpleText(
         value : Behaviour[String])(
         implicit ctx : BindContext)
-      : Node = {
-    val res = new Text()
-    res.setText _ ≻ value
+      : JComponent = {
+    val res = new JTextArea()
+    value ≺ res.setText
+    res setEditable false
     res
   }
 }

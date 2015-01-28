@@ -1,8 +1,8 @@
 package ru.maxkar.widgets.image
 
 import java.io.File
+import java.awt.image.BufferedImage
 
-import javafx.scene.image._
 
 import ru.maxkar.async._
 
@@ -66,7 +66,7 @@ final class ImageLoader(
 
 
   /** Applies a new image content. */
-  private def applyNewImage(res : PromiseResult[Image]) : Unit = {
+  private def applyNewImage(res : PromiseResult[BufferedImage]) : Unit = {
     if (nextFile != null)
       doLoad(nextFile)
     else
@@ -86,7 +86,7 @@ object ImageLoader {
   /** State of the image loader. */
   abstract sealed class State
   /** Image is ready and can be displayed. */
-  final case class Ready(image : Image) extends State
+  final case class Ready(image : BufferedImage) extends State
   /** Image is loading. */
   final case object Loading extends State
   /** Image loading failed. */
@@ -95,13 +95,6 @@ object ImageLoader {
 
 
   /** File load implementation. */
-  def loadFile(file : File) : Image = {
-    val img = javax.imageio.ImageIO.read(file)
-    if (img == null)
-      return null
-    val res = javafx.embed.swing.SwingFXUtils.toFXImage(img, null)
-    img.flush()
-    res
-  }
-
+  def loadFile(file : File) : BufferedImage =
+     javax.imageio.ImageIO.read(file)
 }
