@@ -22,8 +22,10 @@ class DirectoryView private(
       private var parent : DirectoryView,
       physicalPath : File,
       unmountOnClose : Boolean,
-      mounter : FuseMounter) {
+      mounter : FuseMounter,
+      val dirName : String) {
   import DirectoryView._
+
 
   /** Flag, indicating that directory view is closed. */
   private var closed = false
@@ -80,8 +82,8 @@ class DirectoryView private(
   private def findParent() : DirectoryView = {
     val pd = physicalPath.getParentFile()
       if (pd != null)
-        return new DirectoryView(null, pd, false, mounter)
-          return null
+        return new DirectoryView(null, pd, false, mounter, pd.getName)
+      return null
   }
 
 
@@ -117,10 +119,10 @@ class DirectoryView private(
 
         op {
           if (!entry.canMount)
-            new DirectoryView(this, new File(physicalPath, entry.name), false, mounter)
+            new DirectoryView(this, new File(physicalPath, entry.name), false, mounter, entry.name)
           else {
             val mountPath = mounter.mount(new File(physicalPath, entry.name))
-            new DirectoryView(this, mountPath, true, mounter)
+            new DirectoryView(this, mountPath, true, mounter, entry.name)
           }
         }
   }
@@ -168,7 +170,8 @@ object DirectoryView {
    * are not accessible).
    */
   def forFile(file : File, mounter : FuseMounter) : DirectoryView =
-    new DirectoryView(null, file.getCanonicalFile(), false, mounter)
+    new DirectoryView(null, file.getCanonicalFile(), false, mounter,
+      file.getCanonicalFile().getName())
 
 
 

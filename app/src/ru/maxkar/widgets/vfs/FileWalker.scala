@@ -62,6 +62,7 @@ final class FileWalker private(
     if (inOp || item == null)
       return
 
+    val ename = curDirectoryV.value.dirName
     val res = async {
       item match {
         case FileInfo.ParentDirectory ⇒
@@ -82,7 +83,12 @@ final class FileWalker private(
       if (v != null)
         Wave.group(w ⇒ {
           allEntitiesV.wavedSet(v._1, w)
-          selectionV.wavedSet(null, w)
+          val nd =
+            if (item != FileInfo.ParentDirectory)
+              FileInfo.ParentDirectory
+            else
+              v._1.find(x ⇒ x.name == ename).getOrElse(null)
+          selectionV.wavedSet(nd, w)
           curDirectoryV.wavedSet(v._2, w)
         })
     })
