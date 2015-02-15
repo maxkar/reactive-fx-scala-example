@@ -17,11 +17,24 @@ import javax.swing.event.ListSelectionEvent
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
 
+import ru.maxkar.ui.syntax._
+import ru.maxkar.ui.actions.ActionSpec
+
 
 /**
  * File walker renderer.
  */
 object FileWalkerView {
+  /**
+   * Default mapping between action keys and action handlers.
+   */
+  private val DEFAULT_ACTION_MAP = Seq(
+    "ENTER" → "open",
+    "BACK_SPACE" → "up"
+  )
+
+
+
   /**
    * Creates a new entry list reader with the specified
    * directory icons.
@@ -75,6 +88,8 @@ object FileWalkerView {
 
 
     (syncModels _).curried ≻ walker.items ≻ walker.selection
+    if (walker.selection.value != null)
+      list.setSelectedValue(walker.selection.value, true)
 
 
     list addListSelectionListener new ListSelectionListener() {
@@ -109,4 +124,32 @@ object FileWalkerView {
     val res = new JScrollPane(list)
     res
   }
+
+
+
+  /**
+   * Returns navigation actions for the specific file walker.
+   * Supported actions: <ul>
+   *   <li>open - open current selection
+   *   <li>up - go one level up
+   * </ul>
+   * @param prefix action name prefix.
+   */
+  def navActionsFor(prefix : String, w : FileWalker) : Seq[ActionSpec] =
+    Seq(
+      prefix + "open" :-> w.open,
+      prefix + "up" :-> {
+        if (w.items.value.contains(FileInfo.ParentDirectory)) {
+          w.select(FileInfo.ParentDirectory)
+          w.open()
+        }
+      }
+    )
+
+
+  /**
+   * Creates default key bindings for actions with specific prefix.
+   */
+  def defaultKeyBindings(prefix : String) : Seq[(String, String)] =
+    DEFAULT_ACTION_MAP.map(x ⇒ (x._1, prefix + x._2))
 }

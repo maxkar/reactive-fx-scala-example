@@ -1,5 +1,7 @@
 package ru.maxkar.ui
 
+import actions.ActionSpec
+
 import java.awt.event.KeyEvent
 import java.awt.event.InputEvent
 import java.awt.event.KeyListener
@@ -7,6 +9,8 @@ import java.awt.event.KeyAdapter
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
+
+import syntax._
 
 
 /**
@@ -29,6 +33,7 @@ abstract sealed class Zoom {
  * Zoom class companion.
  */
 object Zoom {
+
   /** Zoom with a fixed scale. */
   final case class Fixed(scale : Double) extends Zoom {
     override def scaleFor(
@@ -69,6 +74,28 @@ object Zoom {
 
 
   /**
+   * Default mapping from keys to actions.
+   */
+  private val DEFAULT_KEY_BINDINGS = Seq(
+    "PLUS" → "zoomIn",
+    "ADD" → "zoomIn",
+    "EQUALS" → "zoomIn",
+
+    "MINUS" → "zoomOut",
+    "UNDERSCORE" → "zoomOut",
+    "SUBTRACT" → "zoomOut",
+    "EQUALS" → "zoomOut",
+
+    "DIVIDE" → "reset",
+    "MULTIPLY" → "fit",
+
+    "NUM_0" → "smartFit",
+    "INSERT" → "smartFit"
+  )
+
+
+
+  /**
    * Calculates a next zoom factor for the specified current value.
    */
   def nextAutoZoom(scale : Double) : Double = {
@@ -99,19 +126,19 @@ object Zoom {
    * @param presets zoom presets. Must be sorted in ascending order.
    * @param scale current scale.
    */
-  def nextPresetZoom(presets : Seq[Double], scale : Double) : Double = {
+  def nextPresetZoom(presets : Seq[Double], scale : Double) : Zoom = {
     val naz = nextAutoZoom(scale)
     if (presets.isEmpty || naz < presets.head)
-      return naz
+      return Fixed(naz)
 
     val iter = presets.iterator
     while (iter.hasNext) {
       val guess = iter.next
       if (guess > scale)
-        return guess
+        return Fixed(guess)
     }
 
-    return naz
+    return Fixed(naz)
   }
 
 
@@ -123,20 +150,20 @@ object Zoom {
    * @param presets zoom presets. Must be sorted in ascending order.
    * @param scale current scale.
    */
-  def prevPresetZoom(presets : Seq[Double], scale : Double) : Double = {
+  def prevPresetZoom(presets : Seq[Double], scale : Double) : Zoom = {
     val paz = prevAutoZoom(scale)
     if (presets.isEmpty || paz > presets.last)
-      return paz
+      return Fixed(paz)
 
 
     val iter = presets.reverseIterator
     while (iter.hasNext) {
       val guess = iter.next
       if (guess < scale)
-        return guess
+        return Fixed(guess)
     }
 
-    return paz
+    return Fixed(paz)
   }
 
 
@@ -160,77 +187,45 @@ object Zoom {
 
 
   /**
-   * Finds a new zoom for the shortcut.
+   * Creates action definitions for the zoom model.
+   * @param prefix action key prefix.
+   * @param presets zoom presets.
+   * @param effectiveZoom current(effective zoom) value
+   * @param callback callback to invoke with new zoom.
    */
-  def zoomForShortcut(
+  def zoomActionsFor(
+        prefix : String,
         presets : Seq[Double],
-        effectiveZoom : Option[Double],
-        selectedZoom : Zoom,
-        event : KeyEvent)
-      : Option[Zoom] = {
-    val czoom = subEffectiveZoom(effectiveZoom, selectedZoom)
-    event.getKeyCode() match {
-      case KeyEvent.VK_PLUS | KeyEvent.VK_ADD ⇒
-        czoom.map(z ⇒ Zoom.Fixed(nextPresetZoom(presets, z)))
-      case KeyEvent.VK_MINUS | KeyEvent.VK_UNDERSCORE | KeyEvent.VK_SUBTRACT | KeyEvent.VK_EQUALS ⇒
-        czoom.map(z ⇒ Zoom.Fixed(prevPresetZoom(presets, z)))
-      case KeyEvent.VK_DIVIDE ⇒ Some(Zoom.Fixed(1.0))
-      case KeyEvent.VK_MULTIPLY ⇒ Some(Zoom.Fit)
-      case KeyEvent.VK_INSERT ⇒ Some(Zoom.SmartFit)
-      case _ ⇒ None
-    }
-  }
+        effectiveZoom : Behaviour[Option[Double]],
+        zoom : Behaviour[Zoom],
+        callback : Zoom ⇒ Unit) :
+      Seq[ActionSpec] =
+    Seq(
+      prefix + "zoomIn" :-> {
+        subEffectiveZoom(effectiveZoom.value, zoom.value)match {
+          case Some(x) ⇒ callback(nextPresetZoom(presets, x))
+          case None ⇒ ()
+        }
+      },
+      prefix + "zoomOut" :-> {
+        subEffectiveZoom(effectiveZoom.value, zoom.value) match {
+          case Some(x) ⇒ callback(prevPresetZoom(presets, x))
+          case None ⇒ ()
+        }
+      },
+      prefix + "reset" :->
+        callback(Zoom.Fixed(1.0)),
+      prefix + "fit" :->
+        callback(Zoom.Fit),
+      prefix + "smartFit" :->
+        callback(Zoom.SmartFit)
+    )
 
 
 
   /**
-   * Creates a zoom shortcut handler.
-   * @param presets zoom preset values.
-   * @param effectiveZoom effective (current) zoom value.
-   * @param callback callback to invoke on a new zoom.
+   * Generates key-to-action binding for the given action prefix.
    */
-  def zoomShortcutHandler(
-        presets : Seq[Double],
-        effectiveZoom : Behaviour[Double],
-        callback : Zoom ⇒ Unit)
-      : KeyListener =
-    new KeyAdapter() {
-      override def keyPressed(evt : KeyEvent) {
-        if (isModifierDown(evt))
-          return
-
-        evt.getKeyCode() match {
-          case KeyEvent.VK_PLUS | KeyEvent.VK_ADD ⇒
-            callback(Zoom.Fixed(
-              nextPresetZoom(presets, effectiveZoom.value)))
-            evt.consume()
-          case KeyEvent.VK_MINUS | KeyEvent.VK_UNDERSCORE | KeyEvent.VK_SUBTRACT | KeyEvent.VK_EQUALS ⇒
-            callback(Zoom.Fixed(
-              prevPresetZoom(presets, effectiveZoom.value)))
-            evt.consume()
-          case KeyEvent.VK_DIVIDE ⇒
-            callback(Zoom.Fixed(1.0))
-            evt.consume()
-          case KeyEvent.VK_MULTIPLY ⇒
-            callback(Zoom.Fit)
-            evt.consume()
-          case KeyEvent.VK_INSERT ⇒
-            callback(Zoom.SmartFit)
-            evt.consume()
-          case _ ⇒ ()
-        }
-      }
-    }
-
-
-
-  private def isModifierDown(evt : KeyEvent) : Boolean = {
-    val mask =
-      InputEvent.ALT_DOWN_MASK |
-      InputEvent.ALT_GRAPH_DOWN_MASK |
-      InputEvent.CTRL_DOWN_MASK |
-      InputEvent.META_DOWN_MASK |
-      InputEvent.SHIFT_DOWN_MASK
-    return (evt.getModifiers() & mask) == 0
-  }
+  def defaultKeyBindings(prefix : String) : Seq[(String, String)] =
+    DEFAULT_KEY_BINDINGS.map(x ⇒ (x._1, prefix + x._2))
 }

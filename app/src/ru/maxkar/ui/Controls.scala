@@ -10,6 +10,7 @@ import javax.swing.JButton
 import javax.swing.JComboBox
 import javax.swing.JLabel
 import javax.swing.JPanel
+import javax.swing.JSplitPane
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
@@ -96,6 +97,23 @@ object Controls {
       override def actionPerformed(e : ActionEvent) : Unit =
         action
     }
+    res
+  }
+
+
+
+  /**
+   * Creates a horizontal split pane.
+   */
+  def hsplit(
+        left : JComponent,
+        right : JComponent,
+        leftGrowWeight : Double = 0.0)
+      : JComponent = {
+    val res = new JSplitPane()
+    res setLeftComponent left
+    res setRightComponent right
+    res setResizeWeight leftGrowWeight
     res
   }
 }

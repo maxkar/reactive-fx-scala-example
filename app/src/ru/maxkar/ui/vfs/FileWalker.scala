@@ -31,14 +31,15 @@ final class FileWalker private(
   /** Current directory view model. */
   private val curDirectoryV = variable(baseDirectory)
 
-  /** Focused (selected) entity. */
-  private val selectionV = variable[FileInfo](null)
-
-
-  /* PUBLIC API. */
-
   /** Items in this file walker, these items are available for the UI. */
   val items = allEntitiesV.behaviour ≺ (ents ⇒ ents.toSeq.sortWith(isBefore))
+
+
+
+  /** Focused (selected) entity. */
+  private val selectionV = variable[FileInfo](
+    if (items.value.size == 0) null else items.value()(0))
+
 
   /** Selected entity model. */
   val selection : Behaviour[FileInfo] = selectionV
