@@ -1,4 +1,4 @@
-package ru.maxkar.fx
+package ru.maxkar.ui
 
 import java.awt.Rectangle
 import java.awt.Point

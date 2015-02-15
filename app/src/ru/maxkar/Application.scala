@@ -23,14 +23,12 @@ import javax.swing.WindowConstants
 import javax.swing.KeyStroke
 import javax.swing.AbstractAction
 
-
-import ru.maxkar.fx._
-import ru.maxkar.fx.Bridge._
-
+import ru.maxkar.util._
 import ru.maxkar.util.vfs._
-import ru.maxkar.widgets.vfs._
-import ru.maxkar.widgets.zoom.Zoom
-import ru.maxkar.widgets.image.ImageLoaderView
+
+import ru.maxkar.ui._
+import ru.maxkar.ui.vfs._
+import ru.maxkar.ui.image.ImageLoaderView
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
@@ -38,12 +36,12 @@ import ru.maxkar.reactive.value._
 import scala.collection.JavaConversions._
 
 
-class FXApp(
+class Application(
       iohandler : AsyncExecutor,
       bro : FileWalker,
       fsRenderer : (BufferedImage, BufferedImage, BufferedImage, BufferedImage),
       shutdownHandler : () ⇒ Unit) {
-  import FXApp._
+  import Application._
 
 
   /** Application-wide lifespan. */
@@ -101,9 +99,9 @@ class FXApp(
 
     val bottom = new JPanel()
     bottom setLayout new FlowLayout(FlowLayout.LEADING)
-    bottom add Texts.simpleText(opText)
+    bottom add Controls.label(opText)
     bottom add zoomBox
-    bottom add Texts.simpleText(zoomText _ ≻ imageui.effectiveZoom)
+    bottom add Controls.label(zoomText _ ≻ imageui.effectiveZoom)
 
     root.add(bottom, BorderLayout.PAGE_END)
     cnt setLeftComponent fsRender
@@ -137,7 +135,7 @@ class FXApp(
 }
 
 
-object FXApp {
+object Application {
   /** Formats a zoom text. */
   private def zoomText(zoom : Option[Double]) : String =
     zoom match {

@@ -1,4 +1,4 @@
-package ru.maxkar.widgets.vfs
+package ru.maxkar.ui.vfs
 
 
 /** Type of file/entity in the VFS view. */

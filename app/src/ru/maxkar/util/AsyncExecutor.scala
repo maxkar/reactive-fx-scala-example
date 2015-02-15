@@ -1,7 +1,8 @@
-package ru.maxkar.fx
+package ru.maxkar.util
+
+import Runnables._
 
 import ru.maxkar.async._
-import ru.maxkar.fx.Bridge._
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._

@@ -1,4 +1,4 @@
-package ru.maxkar.fx
+package ru.maxkar.util
 
 import java.io._
 

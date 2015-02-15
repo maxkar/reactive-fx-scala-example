@@ -1,4 +1,4 @@
-package ru.maxkar.widgets.image
+package ru.maxkar.ui.image
 
 import java.io.File
 import java.awt.image.BufferedImage

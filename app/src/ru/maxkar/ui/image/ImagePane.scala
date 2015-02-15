@@ -1,4 +1,4 @@
-package ru.maxkar.widgets.image
+package ru.maxkar.ui.image
 
 import java.awt.Dimension
 import java.awt.Graphics
@@ -15,11 +15,8 @@ import javax.swing.JScrollPane
 import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 
-import ru.maxkar.fx.Layouts
-import ru.maxkar.fx.Bridge._
-import ru.maxkar.fx.Scrolls
-
-import ru.maxkar.widgets.zoom._
+import ru.maxkar.ui.Scrolls
+import ru.maxkar.ui.Zoom
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._

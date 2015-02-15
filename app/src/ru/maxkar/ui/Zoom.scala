@@ -1,4 +1,4 @@
-package ru.maxkar.widgets.zoom
+package ru.maxkar.ui
 
 import java.awt.event.KeyEvent
 import java.awt.event.InputEvent

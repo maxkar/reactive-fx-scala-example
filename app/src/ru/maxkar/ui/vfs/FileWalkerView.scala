@@ -1,4 +1,4 @@
-package ru.maxkar.widgets.vfs
+package ru.maxkar.ui.vfs
 
 import java.awt.image.BufferedImage
 import java.awt.Component
@@ -13,10 +13,6 @@ import javax.swing.ImageIcon
 
 import javax.swing.event.ListSelectionListener
 import javax.swing.event.ListSelectionEvent
-
-import ru.maxkar.fx.Bridge._
-
-import javafx.beans.value._
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._

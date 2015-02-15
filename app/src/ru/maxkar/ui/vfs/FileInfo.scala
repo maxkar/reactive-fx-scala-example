@@ -1,5 +1,4 @@
-package ru.maxkar.widgets.vfs
-
+package ru.maxkar.ui.vfs
 
 import ru.maxkar.util.vfs._
 

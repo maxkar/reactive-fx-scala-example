@@ -17,15 +17,14 @@ import javax.swing.JFrame
 
 import ru.maxkar.async._
 
-import ru.maxkar.fx._
-import ru.maxkar.fx.Bridge._
-
 import ru.maxkar.fun._
 import ru.maxkar.fun.syntax._
 
+import ru.maxkar.util._
+import ru.maxkar.util.Runnables._
 import ru.maxkar.util.vfs._
-import ru.maxkar.widgets.vfs._
-import ru.maxkar.widgets.image.ImageLoader
+import ru.maxkar.ui.vfs._
+import ru.maxkar.ui.image.ImageLoader
 
 import scala.collection.mutable.Stack
 
@@ -56,7 +55,7 @@ final class Loader {
     walker ≺ (w ⇒ shutdownHandlers.push(() ⇒ w.close()))
 
     def launch(w : FileWalker)(style : (BufferedImage, BufferedImage, BufferedImage, BufferedImage)) : Unit = {
-      new FXApp(
+      new Application(
         iohandler, w, style,
         () ⇒ Loader.shutdown(shutdownHandlers)).start()
       loadingWindow.dispose()

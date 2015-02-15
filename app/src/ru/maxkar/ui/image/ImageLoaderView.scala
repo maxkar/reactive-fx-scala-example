@@ -1,16 +1,15 @@
-package ru.maxkar.widgets.image
+package ru.maxkar.ui.image
 
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JTextArea
 
+import ru.maxkar.ui._
+import ru.maxkar.util.Exceptions
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
 import ru.maxkar.reactive.value.syntax._
 
-import ru.maxkar.widgets.zoom.Zoom
-
-import ru.maxkar.fx._
 
 /**
  * View for the image loader.
@@ -29,7 +28,7 @@ final class ImageLoaderView(
 
   /** Image loader view. */
   val ui : JComponent =
-    Nodes contentOf (getUI _ ≻ renderState)
+    Controls contentOf (getUI _ ≻ renderState)
 
 
 
