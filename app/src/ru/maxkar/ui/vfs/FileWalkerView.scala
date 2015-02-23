@@ -2,6 +2,7 @@ package ru.maxkar.ui.vfs
 
 import java.awt.image.BufferedImage
 import java.awt.Component
+import java.awt.event._
 
 import javax.swing.JComponent
 import javax.swing.JList
@@ -87,6 +88,41 @@ object FileWalkerView {
     }
 
 
+    def pageUpIdx() : Int = {
+      val idx = list.getSelectedIndex()
+      if (idx < 0)
+        return -1
+
+      val lbnd = list.getFirstVisibleIndex()
+      if (lbnd == 0 && idx <= list.getLastVisibleIndex())
+        return 0
+
+      val rbnd = list.getLastVisibleIndex()
+      return Math.max(0, idx - (rbnd - lbnd - 1))
+    }
+
+
+    def pageDnIdx() : Int = {
+      val idx = list.getSelectedIndex()
+      if (idx < 0)
+        return -1
+
+
+      val lim = walker.items.value.length - 1
+      val rbnd = list.getLastVisibleIndex()
+      if (rbnd == lim && idx >= list.getFirstVisibleIndex())
+        return lim
+
+      val lbnd = list.getFirstVisibleIndex()
+      return Math.min(lim, idx + (rbnd - lbnd - 1))
+    }
+
+
+    def pageNav(idx : Int) : Unit =
+      walker.select(walker.items.value()(idx))
+
+
+
     (syncModels _).curried ≻ walker.items ≻ walker.selection
     if (walker.selection.value != null)
       list.setSelectedValue(walker.selection.value, true)
@@ -118,6 +154,29 @@ object FileWalkerView {
         label.setText(value.name)
         label.setIcon(new ImageIcon(iconForType(value.fileType)))
         label
+      }
+    }
+
+    list.actions.add(
+      "intl::nextPage" :-> {
+        println("Action")
+      })
+    list.keysWhenFocusedAncestor.addAll(
+      "PAGE_DOWN" → "intl::nextPage"
+    )
+
+    list addKeyListener new KeyAdapter() {
+      override def keyPressed(e : KeyEvent) {
+        if (e.getModifiers == 0)
+          e.getKeyCode match {
+            case KeyEvent.VK_PAGE_DOWN ⇒
+              pageNav(pageDnIdx())
+              e.consume()
+            case KeyEvent.VK_PAGE_UP ⇒
+              pageNav(pageUpIdx())
+              e.consume()
+            case _ ⇒ ()
+          }
       }
     }
 
