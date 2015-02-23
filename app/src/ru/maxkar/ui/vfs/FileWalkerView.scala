@@ -157,13 +157,6 @@ object FileWalkerView {
       }
     }
 
-    list.actions.add(
-      "intl::nextPage" :-> {
-        println("Action")
-      })
-    list.keysWhenFocusedAncestor.addAll(
-      "PAGE_DOWN" → "intl::nextPage"
-    )
 
     list addKeyListener new KeyAdapter() {
       override def keyPressed(e : KeyEvent) {
