@@ -54,6 +54,7 @@ object ImagePane {
     val outerBounds = variable(new Dimension(0, 0))
     val width = image.getWidth
     val height = image.getHeight
+    val renderer = new ImageBuffer(image)
 
     val ui = new JScrollPane(
       ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
@@ -67,7 +68,7 @@ object ImagePane {
     val zoomFactor =
       effectiveZoomFor(image.getWidth, image.getHeight) _ ≻ outerBounds.behaviour ≻ zoom
     val targetSize =
-      targetImageSize(image.getWidth, image.getHeight) _ ≻ zoomFactor
+      ImageBuffer.targetImageSize(image.getWidth, image.getHeight) _ ≻ zoomFactor
     val sizeGoal =
       preferredSizeFor _ ≻ outerBounds.behaviour ≻ targetSize
 
@@ -75,7 +76,8 @@ object ImagePane {
     val inner = new JComponent(){
       override def paintComponent(g : Graphics) : Unit = {
         super.paintComponents(g)
-        renderImage(g.asInstanceOf[Graphics2D], image, zoomFactor.value, this.getSize())
+        val sz = this.getSize()
+        renderer.renderTo(g, sz.width, sz.height, zoomFactor.value)
       }
     }
 
@@ -94,45 +96,6 @@ object ImagePane {
 
     new ImagePane(ui, zoomFactor)
   }
-
-
-
-  /**
-   * Renders an image.
-   * @param g graphics to render on.
-   * @param img image to paint.
-   * @param zoom zoom factor.
-   * @param size component (canvas) size.
-   */
-  private def renderImage(
-        g : Graphics2D, img : BufferedImage,
-        zoom : Double, size : Dimension)
-      : Unit = {
-    val effectiveSize = targetImageSize(img.getWidth, img.getHeight)(zoom)
-    val dx = (size.width - effectiveSize.width) / 2
-    val dy = (size.height - effectiveSize.height) / 2
-
-    val trans = new AffineTransform(zoom, 0, 0, zoom, dx, dy)
-
-    g.setRenderingHint(
-      RenderingHints.KEY_ANTIALIASING,
-      RenderingHints.VALUE_ANTIALIAS_ON)
-    g.setRenderingHint(
-      RenderingHints.KEY_INTERPOLATION,
-      RenderingHints.VALUE_INTERPOLATION_BICUBIC)
-    g.drawImage(img, trans, null)
-  }
-
-
-
-
-  /**
-   * Calculates target image size.
-   */
-  private def targetImageSize(
-        width : Int, height : Int)(zoom : Double)
-      : Dimension =
-    new Dimension((width * zoom).floor.toInt, (height * zoom).floor.toInt)
 
 
 
