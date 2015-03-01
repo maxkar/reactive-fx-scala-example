@@ -5,11 +5,13 @@ import actions.ActionSpec
 import keys.Keymap
 
 import java.awt.event.ActionEvent
+import java.awt.event.ActionListener
 
 import java.awt.Dimension
 import javax.swing.Action
 import javax.swing.AbstractAction
 import javax.swing.JComponent
+import javax.swing.SwingUtilities
 
 /**
  * Different syntax enhancements for the UI package.
@@ -62,5 +64,25 @@ object syntax {
   def action(x : ⇒ Unit) : Action =
     new AbstractAction() {
       override def actionPerformed(e : ActionEvent) : Unit = x
+    }
+
+
+
+  /**
+   * Creates an action listener from block.
+   */
+  def onAction(x : ⇒ Unit) : ActionListener =
+    new ActionListener() {
+      override def actionPerformed(e : ActionEvent) : Unit = x
+    }
+
+
+
+  /**
+   * Executes an action on a next platform tick.
+   */
+  def nextTick(x : ⇒ Unit) : Unit =
+    SwingUtilities invokeLater new Runnable() {
+      override def run() : Unit = x
     }
 }

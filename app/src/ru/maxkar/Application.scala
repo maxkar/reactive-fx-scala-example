@@ -92,6 +92,8 @@ class Application(
     }
     primaryStage setDefaultCloseOperation WindowConstants.DO_NOTHING_ON_CLOSE
 
+    primaryStage setGlassPane Controls.lockPane(iohandler.operationCount ≺ (x ⇒ x > 0))
+
     primaryStage.pack()
     primaryStage setVisible true
   }

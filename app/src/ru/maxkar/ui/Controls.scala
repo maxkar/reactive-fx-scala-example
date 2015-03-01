@@ -4,6 +4,8 @@ import java.awt.BorderLayout
 
 import java.awt.event.ActionListener
 import java.awt.event.ActionEvent
+import java.awt.Graphics
+import java.awt.Color
 
 import javax.swing.JComponent
 import javax.swing.JButton
@@ -116,4 +118,17 @@ object Controls {
     res setResizeWeight leftGrowWeight
     res
   }
+
+
+
+  /**
+   * Creates a "lock UI" pane. This pane is intended to be used as
+   * glass pane or top level pane in layered pane. This pane locks both
+   * focus and mouse interaction.
+   */
+  def lockPane(
+        locked : Behaviour[Boolean])(
+        implicit ctx : BindContext)
+      : JComponent =
+    LockPane.create(locked)
 }
