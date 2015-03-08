@@ -1,5 +1,7 @@
 package ru.maxkar.ui.image
 
+import java.awt.image.BufferedImage
+
 import javax.swing.JComponent
 import javax.swing.JPanel
 import javax.swing.JTextArea
@@ -9,13 +11,14 @@ import ru.maxkar.util.Exceptions
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
 import ru.maxkar.reactive.value.syntax._
+import ru.maxkar.async._
 
 
 /**
  * View for the image loader.
  */
 final class ImageLoaderView(
-      image : Behaviour[ImageLoader.State],
+      image : Attractor[BufferedImage],
       zoom : Behaviour[Zoom])(
       implicit ctx : BindContext){
   import ImageLoaderView._
@@ -28,7 +31,7 @@ final class ImageLoaderView(
 
   /** Image loader view. */
   val ui : JComponent =
-    Controls contentOf (getUI _ ≻ renderState)
+    Controls contentOf (renderState ≺ getUI)
 
 
 
@@ -45,24 +48,15 @@ final class ImageLoaderView(
    * Renders a loader state.
    */
   private def render(
-        state : ImageLoader.State,
+        state : AttractorState[BufferedImage],
         ctx : BindContext) : UIState = {
     implicit val c = ctx
 
     state match {
-      case ImageLoader.Ready(null) ⇒
-        UIOther(null)
-      case ImageLoader.Ready(x) ⇒
-        UIImage(ImagePane.render(x, zoom))
-      case ImageLoader.Loading ⇒
-        UIOther(new JPanel())
-        //UIOther(new ProgressIndicator())
-      case ImageLoader.LoadError(e) ⇒
-        val msg =
-          if (e == null)
-            "No Image loaded, bad format?"
-          else
-            Exceptions.fullException(e)
+      case Updating | Success(null) ⇒ UIOther(new JPanel())
+      case Success(x) ⇒ UIImage(ImagePane.render(x, zoom))
+      case Failure(e) ⇒
+        val msg = Exceptions.fullException(e)
         val ta = new JTextArea(msg)
         ta setEditable false
         UIOther(ta)
@@ -77,12 +71,10 @@ final class ImageLoaderView(
  */
 object ImageLoaderView {
   import java.io.File
-  import ru.maxkar.async.Promising
 
   private abstract sealed class UIState
   private case class UIImage(img : ImagePane) extends UIState
   private case class UIOther(ui : JComponent) extends UIState
-
 
 
   /**
@@ -123,6 +115,5 @@ object ImageLoaderView {
         implicit ctx : BindContext) :
       ImageLoaderView =
     new ImageLoaderView(
-      new ImageLoader(async, file).state,
-      zoom)
+      simpleAttractor(file, ImageLoader.loadFile, async), zoom)
 }
