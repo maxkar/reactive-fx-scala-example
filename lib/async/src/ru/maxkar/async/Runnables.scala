@@ -1,7 +1,7 @@
-package ru.maxkar.util
+package ru.maxkar.async
 
 import scala.language.implicitConversions
-
+import Runnables._
 
 /**
  * Different utilities for java.util.Runnable and similar stuff.
@@ -20,3 +20,4 @@ object Runnables {
       override def run() : Unit = block
     }
 }
+

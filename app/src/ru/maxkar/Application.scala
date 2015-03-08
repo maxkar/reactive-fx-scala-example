@@ -9,9 +9,11 @@ import javax.swing.JComponent
 import javax.swing.JFrame
 import javax.swing.JPanel
 import javax.swing.WindowConstants
+import javax.swing.SwingUtilities
 
 import ru.maxkar.util._
 import ru.maxkar.util.vfs._
+import ru.maxkar.async._
 
 import ru.maxkar.ui._
 import ru.maxkar.ui.syntax._
@@ -23,7 +25,7 @@ import ru.maxkar.reactive.value._
 
 
 class Application(
-      iohandler : AsyncExecutor,
+      iohandler : CountingExecutor,
       bro : FileWalker,
       fsRenderer : (BufferedImage, BufferedImage, BufferedImage, BufferedImage),
       shutdownHandler : () ⇒ Unit) {
@@ -41,6 +43,8 @@ class Application(
 
   def start() : Unit = {
     var primaryStage = new JFrame("Image viewer")
+
+    val imgIohandler = new CountingExecutor(SwingUtilities.invokeLater, iohandler)
 
     val curFile = variable[DirectoryEntry](null)
     val fsRender =
@@ -61,7 +65,7 @@ class Application(
 
     val zoom = variable[Zoom](Zoom.Fixed(1.0))
 
-    val imageui = ImageLoaderView.autoMake(iohandler, file, zoom)
+    val imageui = ImageLoaderView.autoMake(imgIohandler, file, zoom)
     val zooms = Zoom.SmartFit +: Zoom.Fit +: zoomLevels.map(Zoom.Fixed(_))
 
     val root = Layouts.border(
@@ -92,11 +96,17 @@ class Application(
     }
     primaryStage setDefaultCloseOperation WindowConstants.DO_NOTHING_ON_CLOSE
 
-    primaryStage setGlassPane Controls.lockPane(iohandler.operationCount ≺ (x ⇒ x > 0))
+    primaryStage setGlassPane Controls.lockPane(
+      shouldLock _ ≻ imgIohandler.operationCount ≻ iohandler.operationCount)
 
     primaryStage.pack()
     primaryStage setVisible true
   }
+
+
+
+  private def shouldLock(imgOps : Int)(nonImgOps : Int) : Boolean =
+    imgOps < nonImgOps
 }
 
 

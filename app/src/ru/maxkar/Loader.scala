@@ -19,7 +19,7 @@ import ru.maxkar.fun._
 import ru.maxkar.fun.syntax._
 
 import ru.maxkar.util._
-import ru.maxkar.util.Runnables._
+import ru.maxkar.async.Runnables._
 import ru.maxkar.util.vfs._
 import ru.maxkar.ui.vfs._
 import ru.maxkar.ui.image.ImageLoader
@@ -32,8 +32,9 @@ final class Loader {
     val loadingWindow = new JFrame("Loading")
 
     val shutdownHandlers = new Stack[() ⇒ Promise[Any]]
-    val iohandler = new AsyncExecutor(SwingUtilities.invokeLater)
-    shutdownHandlers.push(iohandler.shutdown)
+    val baseIohandler = new AsyncExecutor(SwingUtilities.invokeLater)
+    val iohandler = new CountingExecutor(SwingUtilities.invokeLater, baseIohandler)
+    shutdownHandlers.push(baseIohandler.shutdown)
 
     loadingWindow.getContentPane().add(new JLabel("Loading"))
     loadingWindow.pack()

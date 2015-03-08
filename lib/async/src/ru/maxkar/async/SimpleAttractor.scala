@@ -55,7 +55,7 @@ private[async] final class SimpleAttractor[V, R](fn : V ⇒ R, op : Promising) {
   private def updateAfterFunction(res : PromiseResult[R]) : Unit =
     nextGoal match {
       case Some(x) ⇒
-        nextGoal = null
+        nextGoal = None
         approach(x)
       case None ⇒
         res match {
