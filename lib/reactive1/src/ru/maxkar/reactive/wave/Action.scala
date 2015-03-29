@@ -31,7 +31,7 @@ private[wave] final class Action[S, I, O](
 
 
   /** Action node. */
-  private val pin = new Pin[O](default, emptyIter, finish)
+  private[wave] val pin = new Pin[O](default, emptyIter, finish)
 
 
 

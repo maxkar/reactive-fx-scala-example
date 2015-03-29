@@ -1,5 +1,6 @@
 package ru.maxkar.reactive.wave
 
+import ru.maxkar.reactive.iter._
 
 import scala.collection.mutable.ArrayBuffer
 import scala.collection.mutable.Queue
@@ -15,6 +16,7 @@ final class Wave {
 
   /** Number of "loaded" items. */
   private var bootCount = 0
+
 
 
   /**
@@ -174,4 +176,49 @@ object Wave {
         actionQueue = null
       }
     }
+
+
+
+  /**
+   * Creates a new "synthetic" pin. This pin could engage in the
+   * processing wave and have its behaviour defined by client.
+   * @param T type of node value.
+   * @param default default pin value (pin outside wave).
+   * @param deps pin dependency iterator.
+   * @param action action to execute when this node is ready.
+   * @return key of the node and node itself.
+   */
+  def pin[T](
+        default : T,
+        deps : DepIterable[Pin[_]],
+        action : () ⇒ T)
+      : (Key, Pin[T]) = {
+    val p = new Pin[T](default, deps, action)
+    (new Key(p), p)
+  }
+
+
+
+  /**
+   * Creates a new action node.
+   * @param S action aggregation state.
+   * @param I action input (request) state.
+   * @param O action output (event) state.
+   * @param default default value for the node.
+   * @param factoryf function used to create new internal state from input.
+   * @param foldf function used to update internal state when many actions
+   *   are performed in same "transaction".
+   * @param finishf function used to finish processing and generate action
+   *   result.
+   * @return pair of action pin and action initiation function.
+   */
+  def action[S, I, O](
+        default : O,
+        factoryf : I ⇒ S,
+        foldf : (S, I) ⇒ S,
+        finishf : S ⇒ O)
+      : (Pin[O], (I) ⇒ Unit) = {
+    val a = new Action(default, factoryf, foldf, finishf)
+    (a.pin, a.initiate)
+  }
 }

@@ -8,9 +8,9 @@ import ru.maxkar.reactive.iter._
  * Wave propagation pin. This could be treated as "output" connectors
  * for each node.
  * @param T type of the pin value.
- * @parat default default pin value (pin outside wave).
+ * @param default default pin value (pin outside wave).
  * @param deps pin dependency iterator.
- * @parat action action to execute when this node is ready.
+ * @param action action to execute when this node is ready.
  */
 final class Pin[T] private[wave](
       default : T,
