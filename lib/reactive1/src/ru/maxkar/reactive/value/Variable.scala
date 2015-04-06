@@ -54,4 +54,15 @@ final class Variable[T] private[value](private var v : T)
 
   /** Returns this variable as behaviour. Could be useful for functors, etc... */
   val behaviour : Behaviour[T] = this
+
+
+  /**
+   * Latest value (including pending updates). Could be useful if this behaviour
+   * is changed as a result of other actions.
+   */
+  def latestValue() : T =
+    nextValue match {
+      case None ⇒ v
+      case Some(x) ⇒ x
+    }
 }

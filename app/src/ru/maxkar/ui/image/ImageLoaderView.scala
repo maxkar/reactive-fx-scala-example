@@ -53,7 +53,7 @@ final class ImageLoaderView(
     implicit val c = ctx
 
     state match {
-      case Updating | Success(null) ⇒ UIOther(new JPanel())
+      case null | Updating | Success(null) ⇒ UIOther(new JPanel())
       case Success(x) ⇒ UIImage(ImagePane.render(x, zoom))
       case Failure(e) ⇒
         val msg = Exceptions.fullException(e)

@@ -3,7 +3,7 @@ package ru.maxkar.ui.vfs
 import ru.maxkar.async._
 
 import ru.maxkar.fun.syntax._
-import ru.maxkar.reactive.wave._
+import ru.maxkar.reactive.proc.Activator
 import ru.maxkar.reactive.value._
 
 import ru.maxkar.util.vfs._
@@ -82,16 +82,16 @@ final class FileWalker private(
     res.onComplete(v ⇒ inOp = false)
     res.onSuccess(v ⇒ {
       if (v != null)
-        Wave.group(w ⇒ {
-          allEntitiesV.wavedSet(v._1, w)
+        Activator.batch {
+          allEntitiesV.set(v._1)
           val nd =
             if (item != FileInfo.ParentDirectory)
               FileInfo.ParentDirectory
             else
               v._1.find(x ⇒ x.name == ename).getOrElse(null)
-          selectionV.wavedSet(nd, w)
-          curDirectoryV.wavedSet(v._2, w)
-        })
+          selectionV.set(nd)
+          curDirectoryV.set(v._2)
+        }
     })
   }
 
@@ -113,11 +113,11 @@ final class FileWalker private(
       } while (p != null)
     }
 
-    res.onComplete(res ⇒ Wave.group(w ⇒ {
-      allEntitiesV.wavedSet(Set.empty, w)
-      curDirectoryV.wavedSet(null, w)
-      selectionV.wavedSet(null, w)
-    }))
+    res.onComplete(res ⇒ Activator.batch {
+      allEntitiesV.set(Set.empty)
+      curDirectoryV.set(null)
+      selectionV.set(null)
+    })
 
     res
   }

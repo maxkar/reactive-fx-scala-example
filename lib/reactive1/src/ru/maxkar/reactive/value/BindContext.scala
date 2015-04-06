@@ -46,6 +46,22 @@ final class BindContext(binder : Binder)
    * new subcontext would be created allowing for a
    * completely new model.
    */
+  def subfmap[S, R](
+        fn : (S, BindContext) ⇒ R,
+        v : Behaviour[S])
+      : Behaviour[R] =
+    new ShallowSubmodelDispatch(binder, fn, v)
+
+
+
+  /**
+   * Value-based submodel dispatch. Creates a new
+   * submodel which lifetime is bound to lifetime
+   * of <em>current</em> value of this behaviour.
+   * When value changes, subcontext would be disposed and
+   * new subcontext would be created allowing for a
+   * completely new model.
+   */
   def submmap[S, R](
         fn : (S, BindContext) ⇒ Behaviour[R],
         v : Behaviour[S])
