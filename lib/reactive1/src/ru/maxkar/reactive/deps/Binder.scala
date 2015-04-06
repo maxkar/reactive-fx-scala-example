@@ -1,5 +1,7 @@
 package ru.maxkar.reactive.deps
 
+import ru.maxkar.reactive.Disposable
+
 
 /**
  * Interface for all items used to set dependencies between elements.
@@ -21,7 +23,7 @@ trait Binder {
 
   /**
    * Creates a "nested" binder. That binder could be disposed by calling a
-   * disporer's <code>dispose</code> method. Also all children binders must be
+   * disporer's <code>dispose</code> method. All children binders must be
    * disposed when <code>this</code> disposer is disposed.
    */
   def sub() : (Binder, Disposable)

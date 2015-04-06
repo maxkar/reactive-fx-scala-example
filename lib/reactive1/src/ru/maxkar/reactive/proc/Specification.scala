@@ -22,5 +22,5 @@ trait Specification {
    *  new procedure and existing ones.
    * @return compiled representation of action defined by this specification.
    */
-  def compile(binder : DependencyBinder) : Action
+  def compile(binder : DownstreamDeps) : Action
 }

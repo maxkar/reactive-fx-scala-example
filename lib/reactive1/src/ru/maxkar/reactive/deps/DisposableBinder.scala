@@ -1,66 +1,55 @@
 package ru.maxkar.reactive.deps
 
+import ru.maxkar.reactive.Disposable
 
 /**
  * Binder for temporary relationships. Destroys all relationships
  * when this binder is destroyed.
  */
 private[deps] final class DisposableBinder extends Binder {
-  /** Dummy header item. */
-  private var head = new DispBinderNode(null)
+  /** Peer dependencies registered here. */
+  private var items = new DependencyList[Disposable]
 
 
-  /** Dummy tail item. */
-  private var tail = new DispBinderNode(null)
+
+  /** Destructor/cleaner for the binder. */
+  private[deps] val disposer = new Disposable() {
+    override def dispose() : Unit = DisposableBinder.this.dispose()
+  }
 
 
 
   override def bind[T](list : DependencyList[T], item : T) : Disposable =
-    if (head == null)
+    if (items == null)
       FakeDisposable
-    else
-      insert(list += item)
+    else {
+      val base = list += item
+      val reg = items += base
+      new PairDisposer(reg, base)
+    }
 
 
 
-  override def sub() : (Binder, Disposable) = {
-    if (head == null)
-      return (FakeBinder, FakeDisposable)
-
-    val binder = new DisposableBinder()
-    (binder, insert(new DisposableBinderDisposer(binder)))
-  }
-
-
-
-
-  /** Insterts a disposable into this list. */
-  private def insert(item : Disposable) : Disposable = {
-    val res = new DispBinderNode(item)
-    res.prev = tail.prev
-    res.prev.next = res
-
-    tail.prev = res
-    res.next = tail
-
-    res
-  }
-
+  override def sub() : (Binder, Disposable) =
+    if (items == null)
+      (FakeBinder, FakeDisposable)
+    else {
+      val binder = new DisposableBinder()
+      val reg = items += binder.disposer
+      (binder, new PairDisposer(reg, binder.disposer))
+    }
 
 
 
   /** Disposes an item. */
   private[deps] def dispose() : Unit = {
-    if (head == null)
+    if (items == null)
       return
 
-    var cur = head.next
-    head = null
-    tail = null
+    val itr = items.iterator
+    items = null
 
-    while (cur.next != null) {
-      cur.disposeInternal()
-      cur = cur.next
-    }
+    while(itr.hasNext)
+      itr.next.dispose()
   }
 }

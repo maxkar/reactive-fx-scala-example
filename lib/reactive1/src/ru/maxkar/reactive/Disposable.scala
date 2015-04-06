@@ -1,4 +1,4 @@
-package ru.maxkar.reactive.deps
+package ru.maxkar.reactive
 
 
 /**

@@ -1,5 +1,6 @@
 package ru.maxkar.reactive.deps
 
+import ru.maxkar.reactive.Disposable
 
 /**
  * Dependency in a dependency list.

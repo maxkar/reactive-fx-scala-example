@@ -1,5 +1,6 @@
 package ru.maxkar.reactive.deps
 
+import ru.maxkar.reactive.Disposable
 
 /**
  * Binder which establishes "permanent" relationship between
@@ -13,6 +14,6 @@ final object PermanentBinder extends Binder {
 
   override def sub() : (Binder, Disposable) = {
     val binder = new DisposableBinder()
-    (binder, new DisposableBinderDisposer(binder))
+    (binder, binder.disposer)
   }
 }

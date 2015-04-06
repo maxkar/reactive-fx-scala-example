@@ -1,5 +1,6 @@
 package ru.maxkar.reactive.deps
 
+import ru.maxkar.reactive.Disposable
 
 /**
  * Mutable list used to track dependencies between object.

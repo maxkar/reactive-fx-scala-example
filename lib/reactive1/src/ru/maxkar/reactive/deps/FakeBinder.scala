@@ -1,5 +1,7 @@
 package ru.maxkar.reactive.deps
 
+import ru.maxkar.reactive.Disposable
+
 /**
  * Fake binder implementation.
  */
