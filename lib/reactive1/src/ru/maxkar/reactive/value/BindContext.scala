@@ -2,6 +2,7 @@ package ru.maxkar.reactive.value
 
 import ru.maxkar.fun._
 
+import ru.maxkar.reactive.Disposable
 import ru.maxkar.reactive.deps.Binder
 import ru.maxkar.reactive.proc.Procedure
 import ru.maxkar.reactive.proc.spec.Specs
@@ -14,6 +15,18 @@ import ru.maxkar.reactive.proc.spec.Specs
  */
 final class BindContext(binder : Binder)
     extends Monad[Behaviour] {
+
+
+  /** Creates a sub-context. This new context could be disposed manually or
+   * by destroying this context manually.
+   * @returns pair of new bind context and its destructor.
+   */
+  def sub() : (BindContext, Disposable) = {
+    val (nb, dest) = binder.sub
+    (new BindContext(nb), dest)
+  }
+
+
 
   /* Functor implementation (more effective than default). */
   override def fmap[S, R](fn : S ⇒ R, item : Behaviour[S]) : Behaviour[R] =
