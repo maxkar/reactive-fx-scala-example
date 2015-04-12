@@ -5,7 +5,7 @@ import ru.maxkar.fun._
 import ru.maxkar.reactive.Disposable
 import ru.maxkar.reactive.deps.Binder
 import ru.maxkar.reactive.proc.Procedure
-import ru.maxkar.reactive.proc.spec.Specs
+import ru.maxkar.reactive.proc.{Specification ⇒ Specs}
 
 
 /**
@@ -13,7 +13,7 @@ import ru.maxkar.reactive.proc.spec.Specs
  * reactive programming.
  * @param binder model binder used in this context.
  */
-final class BindContext(binder : Binder)
+final class BindContext(val binder : Binder)
     extends Monad[Behaviour] {
 
 

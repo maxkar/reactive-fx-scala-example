@@ -4,8 +4,7 @@ import ru.maxkar.fun._
 import ru.maxkar.fun.syntax._
 
 import ru.maxkar.reactive.value._
-import ru.maxkar.reactive.proc.Procedure
-import ru.maxkar.reactive.proc.spec.Specs
+import ru.maxkar.reactive.proc._
 
 /**
  * Controller/processor of the simple attractor.
@@ -18,7 +17,8 @@ import ru.maxkar.reactive.proc.spec.Specs
  */
 private[async] final class SimpleAttractor[V, R](
       private[async] val base : Behaviour[V], fn : V ⇒ R,
-      op : Promising, ctx : BindContext) {
+      op : Promising, ctx : BindContext)
+    extends Behaviour[AttractorState[R]] {
 
   /** Current goal for the attractor. */
   private var currentGoal = base.value
@@ -33,54 +33,46 @@ private[async] final class SimpleAttractor[V, R](
   private var changed = false
 
 
-  /** Current state of the attractor. */
-  private val state : Variable[AttractorState[R]] = variable(null)
+  private val proc =
+    Procedure.compile(
+      new Specification {
+        override def compile(dep : DownstreamDeps) : Action = {
+          dep += base.change.procedure
 
-
-
-  /** Next attractor goal. */
-  private var nextGoal : Option[V] = None
-
-
-
-  /** Attractor associated with this implementation. */
-  private[async] def attractor : Attractor[R] = state.behaviour
-
-
-
-  /** Sets a new attractor goal. */
-  private[async] def setGoal(goal : V) : Unit =
-    nextGoal match {
-      case Some(x) ⇒ nextGoal = Some(goal)
-      case None ⇒
-        attractor.value match {
-          case Updating ⇒ nextGoal = Some(goal)
-          case _ ⇒ approach(goal)
+          Action.seq(
+            Action.await(base.change.procedure),
+            Action.forSingle(currentProcess.change.procedure),
+            Action.forUnit { updateLoading() },
+            Action.dynamicBindTo(dep, currentProcess.change.procedure),
+            Action.forUnit { updateValue() } )
         }
+      },
+      ctx.binder,
+      () ⇒ changed = false)
+
+
+  /** Updates loading state and returns its procedure. */
+  private def updateLoading() : Unit = {
+    if (currentProcess.value == InProgress)
+      return
+
+    if (currentGoal != base.value) {
+      currentGoal = base.value
+      currentProcess = op(fn(currentGoal))
     }
-
-
-
-  /** Approaches the goal by applying function to it. */
-  private def approach(goal : V) : Unit = {
-    state.set(Updating)
-    op(fn(goal)).onComplete(updateAfterFunction)
   }
 
 
 
-  /** Updates attractor state after one goal is reached. */
-  private def updateAfterFunction(res : PromiseResult[R]) : Unit =
-    nextGoal match {
-      case Some(x) ⇒
-        nextGoal = None
-        approach(x)
-      case None ⇒
-        res match {
-          case Failure(f) ⇒ state.set(Failure(f))
-          case Success(r) ⇒ state.set(Success(r))
-        }
+  /** Updates value of this attractor. */
+  private def updateValue() : Unit = {
+    val ns = toAttractorState(currentProcess.value)
+
+    if (currentRes != ns) {
+      changed = true
+      currentRes = ns
     }
+  }
 
 
 
@@ -91,4 +83,9 @@ private[async] final class SimpleAttractor[V, R](
       case Success(x) ⇒ Success(x)
       case Failure(x) ⇒ Failure(x)
     }
+
+
+  /* BEHAVIOUR IMPLEMENTATION. */
+  override def value() : AttractorState[R] = currentRes
+  override val change = Signal[Boolean](proc, changed)
 }

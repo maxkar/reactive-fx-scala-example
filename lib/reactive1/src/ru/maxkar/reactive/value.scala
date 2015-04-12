@@ -2,7 +2,7 @@ package ru.maxkar.reactive
 
 import ru.maxkar.reactive.deps.PermanentBinder
 import ru.maxkar.reactive.proc.Procedure
-import ru.maxkar.reactive.proc.spec.Specs
+import ru.maxkar.reactive.proc.{Specification ⇒ Specs}
 
 
 /** Value-related reactive definitions. */
