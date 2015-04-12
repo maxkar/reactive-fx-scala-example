@@ -22,14 +22,14 @@ final class CountingExecutor(runLater : Runnable ⇒ Unit, peer : Promising)
 
 
   override def apply[T](op : ⇒ T) : Promise[T] = {
+    opCountV.set(opCountV.latestValue + 1)
     val base = peer(op)
-    base.value match {
-      case Failure(_) ⇒ ()
-      case _ ⇒
-        runLater(run { opCountV.set(opCountV.value + 1) })
-        base.onComplete(res ⇒
-          runLater(run { opCountV.set(opCountV.value - 1) }))
-    }
+    base ≺ dec
     base
   }
+
+
+  /** Decrements number of operations. */
+  private def dec(x : Any) : Unit =
+    opCountV.set(opCountV.latestValue - 1)
 }

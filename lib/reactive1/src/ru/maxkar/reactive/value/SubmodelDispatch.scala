@@ -2,7 +2,7 @@ package ru.maxkar.reactive.value
 
 import ru.maxkar.reactive.deps.Binder
 import ru.maxkar.reactive.proc.Procedure
-import ru.maxkar.reactive.proc.spec.Specs
+import ru.maxkar.reactive.proc.{Specification ⇒ Specs}
 
 
 /** Implementation of submodel dispatch.  */
@@ -27,11 +27,11 @@ private[value] final class SubmodelDispatch[S, R](
   /** Update procedure. */
   private val proc =
     Procedure.compile(
-      Specs.sequence(
+      Specs.seq(
         Specs.await(base.change.procedure),
-        Specs.exec { reevalAfterBase },
-        Specs.awaitDynamic(() ⇒ basem.change.procedure),
-        Specs.exec { updateValue }
+        Specs.forUnit { reevalAfterBase },
+        Specs.dynamicBindTo(basem.change.procedure),
+        Specs.forUnit { updateValue }
       ),
       binder,
       () ⇒ changed = false)

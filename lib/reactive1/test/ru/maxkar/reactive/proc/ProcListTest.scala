@@ -3,7 +3,7 @@ package ru.maxkar.reactive.proc
 import org.scalatest.FunSuite
 
 import ru.maxkar.reactive.deps.PermanentBinder
-import ru.maxkar.reactive.proc.spec.Specs._
+import ru.maxkar.reactive.proc.{Specification ⇒ Specs}
 
 /**
  * Tests for the process list.
@@ -11,7 +11,7 @@ import ru.maxkar.reactive.proc.spec.Specs._
 final class ProcListTest extends FunSuite {
   /** Creates a new sample procedure. */
   private def mkProc() : Procedure =
-    Procedure.compile(exec {}, PermanentBinder)
+    Procedure.compile(Specs.noop, PermanentBinder)
 
 
 

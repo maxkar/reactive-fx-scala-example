@@ -4,7 +4,7 @@ package ru.maxkar.reactive.value
 /**
  * Reactive value which could change over time.
  */
-trait Behaviour[T] {
+trait Behaviour[+T] {
   /** Value change signal. */
   val change : Signal[Boolean]
 

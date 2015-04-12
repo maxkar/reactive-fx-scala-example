@@ -2,7 +2,7 @@ package ru.maxkar.reactive.value
 
 import ru.maxkar.reactive.deps.Binder
 import ru.maxkar.reactive.proc.Procedure
-import ru.maxkar.reactive.proc.spec.Specs
+import ru.maxkar.reactive.proc.{Specification ⇒ Specs}
 
 
 /** Behaviour flattening value. */
@@ -20,10 +20,10 @@ private[value] final class Flatten[T](
   /** Update procedure. */
   private val proc =
     Procedure.compile(
-      Specs.sequence(
+      Specs.seq(
         Specs.await(base.change.procedure),
-        Specs.awaitDynamic(() ⇒ base.value().change.procedure),
-        Specs.exec { update() }),
+        Specs.dynamicBindTo(base.value().change.procedure),
+        Specs.forUnit { update() }),
       binder,
       () ⇒ changed = false)
 

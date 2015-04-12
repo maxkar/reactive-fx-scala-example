@@ -96,7 +96,7 @@ package object async {
         ctx : Promising)(
         implicit bindCtx : BindContext)
       : Attractor[R] = {
-    val res = new SimpleAttractor(fn, ctx)
+    val res = new SimpleAttractor(v, fn, ctx, bindCtx)
     v ≺ res.setGoal
     res.attractor
   }

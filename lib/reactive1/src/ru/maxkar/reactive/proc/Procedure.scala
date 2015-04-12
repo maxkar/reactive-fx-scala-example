@@ -119,7 +119,7 @@ object Procedure {
         onActivation : () ⇒ Unit,
         onCleanup : () ⇒ Unit = null)
       : (Activator, Procedure) = {
-    val proc = new Procedure(spec.Specs.exec {onActivation()}, null, onCleanup)
+    val proc = new Procedure(Specification.forUnit {onActivation()}, null, onCleanup)
     (new Activator(proc), proc)
   }
 }

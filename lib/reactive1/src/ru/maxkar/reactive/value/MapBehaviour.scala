@@ -2,7 +2,7 @@ package ru.maxkar.reactive.value
 
 import ru.maxkar.reactive.deps.Binder
 import ru.maxkar.reactive.proc.Procedure
-import ru.maxkar.reactive.proc.spec.Specs
+import ru.maxkar.reactive.proc.{Specification ⇒ Specs}
 
 
 /** Fmap function implementation. */
@@ -20,9 +20,9 @@ private[value] final class MapBehaviour[S, R](
   /** Update procedure. */
   private val proc =
     Procedure.compile(
-      Specs.sequence(
+      Specs.seq(
         Specs.await(item.change.procedure),
-        Specs.exec { update() }
+        Specs.forUnit { update() }
       ),
       binder,
       () ⇒ changed = false)

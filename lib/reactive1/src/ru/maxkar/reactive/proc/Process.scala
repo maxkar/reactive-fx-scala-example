@@ -17,3 +17,64 @@ trait Process {
    */
   def proceedTillNextProcedure() : Procedure
 }
+
+
+
+/**
+ * Process combinators and utilities.
+ */
+final object Process {
+  /** Process without operations. */
+  val noop : Process = new Process() {
+    override def proceedTillNextProcedure() : Procedure = null
+  }
+
+
+
+  /** Awaits all items in the iterator. */
+  def await(items : Iterator[Procedure]) : Process =
+    new Process() {
+      override def proceedTillNextProcedure() : Procedure =
+        if (items.hasNext)
+          items.next
+        else
+          null
+    }
+
+
+
+  /** Awaits all items in the iterable. */
+  def await(items : Iterable[Procedure]) : Process =
+    await(items.iterator)
+
+
+
+
+  /** Creates a new process from action iterator. */
+  def fromActions(actions : Iterator[Action]) : Process =
+    if (!actions.hasNext)
+      noop
+    else
+      new Process() {
+        private var cur = actions.next().start()
+
+        override def proceedTillNextProcedure() : Procedure = {
+          var res = cur.proceedTillNextProcedure()
+          while (res == null) {
+            if (!actions.hasNext)
+              return null
+
+            cur = actions.next().start()
+            res = cur.proceedTillNextProcedure()
+          }
+
+          res
+        }
+      }
+
+
+
+  /** Creates a new process from iterable actions. */
+  def fromActions(actions : Iterable[Action]) : Process =
+    fromActions(actions.iterator)
+}
