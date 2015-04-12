@@ -59,7 +59,7 @@ final class Procedure private(
   private[proc] def activate() : Boolean = {
     if (process != null)
       return false
-    process = action.start()
+    process = action()
     true
   }
 

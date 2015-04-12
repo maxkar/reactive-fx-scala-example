@@ -1,30 +1,9 @@
 package ru.maxkar.reactive.proc
 
-
-/**
- * Composable part of the procedure. Each action could
- * be used as a part of one procedure and each procedure could
- * internally consists of many actions. However actions changing
- * some state (depenedncy lists, etc...) should be parts of one
- * procedure only.
- */
-trait Action {
-  /**
-   * Starts a process. Next procedure's action will be started after
-   * once this action completes.
-   * @return action execution process.
-   */
-  def start() : Process
-}
-
-
-
 /** Convenience action factories. */
 final object Action {
   /** No-operations action. */
-  val noop : Action = new Action() {
-    override def start() : Process = Process.noop
-  }
+  val noop : Action = () ⇒ Process.noop
 
 
 
@@ -36,9 +15,7 @@ final object Action {
     if (procedures.size == 0)
       noop
     else
-      new Action() {
-        override def start() : Process = Process.await(procedures)
-      }
+      () ⇒ Process.await(procedures)
 
 
 
@@ -47,21 +24,16 @@ final object Action {
     actions.size match {
       case 0 ⇒ noop
       case 1 ⇒ actions.head
-      case _ ⇒
-        new Action() {
-          override def start() : Process = Process.fromActions(actions)
-        }
+      case _ ⇒ () ⇒ Process.fromActions(actions)
     }
 
 
 
   /** Creates an atomic action without result. */
   def forUnit(block : ⇒ Unit) : Action =
-    new Action() {
-      override def start() : Process = {
-        block
-        Process.noop
-      }
+    () ⇒ {
+      block
+      Process.noop
     }
 
 
@@ -71,9 +43,7 @@ final object Action {
    * returned procedure. This action do not update any bindings.
    */
   def forSingle(block : ⇒ Procedure) : Action =
-    new Action() {
-      override def start() : Process = Process.await(Seq(block))
-    }
+    () ⇒ Process.await(Seq(block))
 
 
 
@@ -82,9 +52,7 @@ final object Action {
    * returned procedures. This action do not update any binding.
    */
   def forSeq(block : ⇒ Iterable[Procedure]) : Action =
-    new Action() {
-      override def start() : Process = Process.await(block)
-    }
+    () ⇒ Process.await(block)
 
 
 
@@ -102,17 +70,15 @@ final object Action {
     var last = block
     var reg = binder += last
 
-    new Action() {
-      override def start() : Process = {
-        val np = block
-        if (np != last) {
-          reg.dispose()
-          last = np
-          reg = binder += np
-        }
-
-        Process.await(Seq(np))
+    () ⇒ {
+      val np = block
+      if (np != last) {
+        reg.dispose()
+        last = np
+        reg = binder += np
       }
+
+      Process.await(Seq(np))
     }
   }
 }

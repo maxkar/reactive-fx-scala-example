@@ -56,7 +56,7 @@ final object Process {
       noop
     else
       new Process() {
-        private var cur = actions.next().start()
+        private var cur = actions.next()()
 
         override def proceedTillNextProcedure() : Procedure = {
           var res = cur.proceedTillNextProcedure()
@@ -64,7 +64,7 @@ final object Process {
             if (!actions.hasNext)
               return null
 
-            cur = actions.next().start()
+            cur = actions.next()()
             res = cur.proceedTillNextProcedure()
           }
 

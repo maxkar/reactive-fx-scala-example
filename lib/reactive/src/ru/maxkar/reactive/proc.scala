@@ -29,4 +29,14 @@ package object proc {
    *  to Action.start() or Process.processTillNextProcedure).
    */
   type Specification = DepBinder ⇒ Action
+
+
+
+  /**
+   * Composable part of the procedure. Each action could
+   * be used as a part of one procedure and each procedure could
+   * internally consists of many actions.
+   * <p>Each action creates a new calculation process upon a call.
+   */
+  type Action = () ⇒ Process
 }
