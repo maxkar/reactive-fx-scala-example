@@ -15,4 +15,18 @@ package object proc {
 
   /** Procedure is complet during current tick. */
   private[proc] case object Complete extends State
+
+
+
+  /**
+   * Abstract definition of an actions and dependencies.
+   * Installs activation dependencies and creates a new action after the call.
+   * <p>Users are encouraged to use standard specification constructors
+   *   provided by the library (basic, collection, etc...) because
+   *   specification API could change in future versions.
+   * <p>Binder should not be called outside of compilation (i.e.
+   *  during current call to <code>compile</code>) and action (i.e. call
+   *  to Action.start() or Process.processTillNextProcedure).
+   */
+  type Specification = DepBinder ⇒ Action
 }

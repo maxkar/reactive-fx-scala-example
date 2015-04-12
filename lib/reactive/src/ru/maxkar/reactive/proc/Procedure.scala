@@ -42,7 +42,7 @@ final class Procedure private(
   /** Action used to create processes. */
   private val action = {
     val db = new DepBinder(this, binder)
-    val act = spec.compile(db)
+    val act = spec(db)
     if (db.completeInit())
       Execution.autoactivate(this)
     act

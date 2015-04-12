@@ -2,40 +2,11 @@ package ru.maxkar.reactive.proc
 
 
 /**
- * Abstract definition of an action. Used by procedure compiler to
- * create actual actions bound to the procedure.
- * <p>Users are encouraged to use standard specification constructors
- *   provided by the library (basic, collection, etc...) because
- *   specification API could change in future versions.
- */
-trait Specification {
-  /**
-   * Compiles a specification using a provided activation binder.
-   * Activation binder could be used only during compile time
-   * (for static dependencies). It could be stored inside action and
-   * used during runtime (to update/reconfigure dependency graph).
-   *
-   * <p>Binder should not be called outside of compilation (i.e.
-   *  during current call to <code>compile</code>) and action (i.e. call
-   *  to Action.start() or Process.processTillNextProcedure).
-   * @param binder class used to instantiate dependencies between
-   *  new procedure and existing ones.
-   * @return compiled representation of action defined by this specification.
-   */
-  def compile(binder : DepBinder) : Action
-}
-
-
-
-/**
  * Specification factories and utilities.
  */
 final object Specification {
   /** No-operation action. */
-  val noop : Specification =
-    new Specification {
-      override def compile(binder : DepBinder) : Action = Action.noop
-    }
+  val noop : Specification = (binder) ⇒ Action.noop
 
 
 
@@ -47,21 +18,16 @@ final object Specification {
     if (items.isEmpty)
       noop
     else
-      new Specification() {
-        override def compile(binder : DepBinder) : Action = {
-          items.foreach(binder += _)
-          Action.await(items : _*)
-        }
+      (binder) ⇒ {
+        items.foreach(binder += _)
+        Action.await(items : _*)
       }
 
 
 
   /** Preforms a specification which executes an empty action. */
   def forUnit(block : ⇒ Unit) : Specification =
-    new Specification {
-      override def compile(binder : DepBinder) : Action =
-        Action.forUnit(block)
-    }
+    binder ⇒ Action.forUnit(block)
 
 
 
@@ -70,10 +36,7 @@ final object Specification {
    * dependency during the evaluation.
    */
   def dynamicBindTo(block : ⇒ Procedure) : Specification =
-    new Specification {
-      override def compile(binder : DepBinder) : Action =
-        Action.dynamicBindTo(binder, block)
-    }
+    (binder) ⇒ Action.dynamicBindTo(binder, block)
 
 
 
@@ -86,9 +49,6 @@ final object Specification {
       case 0 ⇒ noop
       case 1 ⇒ specs.head
       case _ ⇒
-        new Specification() {
-          override def compile(binder : DepBinder) : Action =
-            Action.seq(specs.map(_.compile(binder)) : _*)
-        }
+        (binder) ⇒ Action.seq(specs.map(s ⇒ s(binder)) : _*)
     }
 }

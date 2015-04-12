@@ -35,20 +35,19 @@ private[async] final class SimpleAttractor[V, R](
 
   private val proc =
     Procedure.compile(
-      new Specification {
-        override def compile(dep : DepBinder) : Action = {
-          dep += base.change.procedure
+      binder ⇒ {
+        binder += base.change.procedure
 
-          Action.seq(
-            Action.await(base.change.procedure),
-            Action.forSingle(currentProcess.change.procedure),
-            Action.forUnit { updateLoading() },
-            Action.dynamicBindTo(dep, currentProcess.change.procedure),
-            Action.forUnit { updateValue() } )
-        }
+        Action.seq(
+          Action.await(base.change.procedure),
+          Action.forSingle(currentProcess.change.procedure),
+          Action.forUnit { updateLoading() },
+          Action.dynamicBindTo(binder, currentProcess.change.procedure),
+          Action.forUnit { updateValue() } )
       },
       ctx.binder,
       () ⇒ changed = false)
+
 
 
   /** Updates loading state and returns its procedure. */
