@@ -67,7 +67,7 @@ final class Procedure private(
 
   /** Runs a process and returns next procedure to await. */
   private[proc] def roll() : Procedure = {
-    val res = process.proceedTillNextProcedure()
+    val res = process()
     if (res == null)
       process = null
     res

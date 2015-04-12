@@ -39,4 +39,19 @@ package object proc {
    * <p>Each action creates a new calculation process upon a call.
    */
   type Action = () ⇒ Process
+
+
+
+  /**
+   * Procedure execution process. Something very similar to coroutine
+   * or coprocedure. Proceeds sequentially until it have to wait until
+   * next procedure is complete.
+   * <p>On each call this function proceedes until this process have to wait
+   * until active process for some other procedure completes.
+   * Returns that procedure to await. Next call
+   * to this method will be made only after given procedure is complete
+   * for this tick (i.e. it could not be run or completed).
+   * Return <code>null</code> after process completion.
+   */
+  type Process = () ⇒ Procedure
 }
