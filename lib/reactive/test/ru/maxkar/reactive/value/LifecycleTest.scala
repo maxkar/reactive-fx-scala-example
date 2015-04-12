@@ -4,10 +4,7 @@ import org.scalatest.FunSuite
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value.syntax._
-import ru.maxkar.reactive.value.event.Event
-import ru.maxkar.reactive.value.Lifespan._
-import ru.maxkar.reactive.wave.Participant
-import ru.maxkar.reactive.wave.Participable
+
 
 /**
  * Tests dedicated to a lifecycle management.
@@ -15,122 +12,92 @@ import ru.maxkar.reactive.wave.Participable
 final class LifecycleTests extends FunSuite {
   import scala.language.implicitConversions
 
-  implicit val lspan = Lifespan.forever
+
+  private var rootCtx = permanentBind
 
 
-  /** Ref-counting item. */
-  private final class RefCount[+T](peer : Behaviour[T]) {
-    private val corrs = new scala.collection.mutable.ArrayBuffer[Participant]
-
-    /** "No listeners" assert. */
-    def checkEmpty() : Unit = assert(corrs.isEmpty, "Correlation set is not empty")
-
-
-    val b : Behaviour[T] = new Behaviour[T] {
-      override def value() : T = peer.value
-      override val change = new Event[Boolean] {
-        override def addCorrelatedNode(node : Participant) = {
-          peer.change.addCorrelatedNode(node)
-          corrs += node
-        }
-
-        override def removeCorrelatedNode(node : Participant) = {
-          peer.change.removeCorrelatedNode(node)
-          corrs -= node
-        }
-
-        override def defer(target : Participant) =
-          peer.change.defer(target)
-
-        override def value() = peer.change.value()
-      }
-    }
-  }
-
-
-
-  def checkRefs(refs : RefCount[Any]*) : Unit =
-    refs.foreach(ref ⇒ ref.checkEmpty())
+  /** Checks number of dependencies on the behaviour. */
+  private def checkRefs(values : Behaviour[_]*) : Unit =
+    values.foreach(value ⇒ {
+      val proc = value.change.procedure
+      val deps = ru.maxkar.reactive.proc.Introspector.activationDepCount(proc)
+      assert(deps === 0)
+    })
 
 
 
   test("On-behaviour map lives correctly") {
     val v = variable(3)
-    val rv = new RefCount(v)
     def fn(x : Int) = x + 1
 
-    val session = mkSession()
-    implicit val ctx = new BindContext(session, Participable.DefaultParticipable)
-    val vv = rv.b ≺ fn
+    val session = rootCtx.sub()
+    implicit val ctx = session._1
+    val vv = v.behaviour ≺ fn
 
     v.set(5)
     assert(6 === vv.value)
 
-    session.destroy()
+    session._2.dispose()
     v.set(8)
     assert(6 === vv.value)
 
-    checkRefs(rv)
+    checkRefs(v)
   }
 
 
 
   test("Map function uplift lives correctly") {
     val v = variable(3)
-    val rv = new RefCount(v)
     def fn(x : Int) = x + 1
 
-    val session = mkSession()
-    implicit val ctx = new BindContext(session, Participable.DefaultParticipable)
-    val vv = rv.b ≺ fn
+    val session = rootCtx.sub()
+    implicit val ctx = session._1
+    val vv = fn _ ≻ v.behaviour
 
     v.set(5)
     assert(6 === vv.value)
 
-    session.destroy()
+    session._2.dispose()
     v.set(8)
     assert(6 === vv.value)
 
-    checkRefs(rv)
+    checkRefs(v)
   }
 
 
 
   test("Applicative application lives correctly") {
     val v = variable(1)
-    val rv = new RefCount(v)
     val w = variable(2)
-    var rw = new RefCount(w)
     def fn(x : Int)(y : Int) = x + y
 
-    val session = mkSession()
-    implicit val ctx = new BindContext(session, Participable.DefaultParticipable)
-    val vv = fn _ ≻ rv.b ≻ rw.b
+    val session = rootCtx.sub()
+    implicit val ctx = session._1
+    val vv = fn _ ≻ v.behaviour ≻ w.behaviour
 
     v.set(6)
     w.set(8)
     assert(14 === vv.value)
 
-    session.destroy()
-    checkRefs(rv, rw)
+    session._2.dispose()
+    checkRefs(v, w)
   }
 
 
 
   test("Applicative application to value lives correctly") {
     val v = variable(1)
-    val rv = new RefCount(v)
     def fn(x : Int)(y : Int) = x + y
 
-    val session = mkSession()
-    implicit val ctx = new BindContext(session, Participable.DefaultParticipable)
-    val vv = fn _ ≻ rv.b ≻ 4
+    val session = rootCtx.sub()
+    implicit val ctx = session._1
+    val vv = fn _ ≻ v.behaviour ≻ 4
 
     v.set(6)
     assert(10 === vv.value)
 
-    session.destroy()
-    checkRefs(rv)
+    session._2.dispose()
+    checkRefs(v)
   }
 
 
@@ -139,29 +106,26 @@ final class LifecycleTests extends FunSuite {
     val v1 = variable(1)
     val v2 = variable(2)
     val v3 = variable(true)
-    val rv1 = new RefCount(v1)
-    val rv2 = new RefCount(v2)
-    val rv3 = new RefCount(v3)
 
-    def fn(v : Boolean) = if (v) rv1.b else rv2.b
+    def fn(v : Boolean) = if (v) v1.behaviour else v2.behaviour
 
-    val session = mkSession()
-    implicit val ctx = new BindContext(session, Participable.DefaultParticipable)
-    val vv = fn _ ≽ rv3.b
+    val session = rootCtx.sub()
+    implicit val ctx = session._1
+    val vv = fn _ ≽ v3.behaviour
 
     v3.set(false)
-    checkRefs(rv1)
+    checkRefs(v1)
 
     v3.set(true)
-    checkRefs(rv2)
+    checkRefs(v2)
 
     v2.set(8)
 
-    session.destroy()
-    checkRefs(rv1, rv2, rv3)
+    session._2.dispose()
+    checkRefs(v1, v2, v3)
 
     v3.set(false)
-    checkRefs(rv1, rv2, rv3)
+    checkRefs(v1, v2, v3)
   }
 
 
@@ -170,22 +134,19 @@ final class LifecycleTests extends FunSuite {
     val v1 = variable(1)
     val v2 = variable(2)
     val v3 = variable(6)
-    val rv1 = new RefCount(v1)
-    val rv2 = new RefCount(v2)
-    val rv3 = new RefCount(v3)
 
-    def fn(v : Int) = if (v < 10) rv1.b else rv2.b
+    def fn(v : Int) = if (v < 10) v1.behaviour else v2.behaviour
 
-    val session = mkSession()
-    implicit val ctx = new BindContext(session, Participable.DefaultParticipable)
+    val session = rootCtx.sub()
+    implicit val ctx = session._1
 
-    rv3.b ≺ (t ⇒ (if (t == 5) session.destroy()))
-    val vv = fn _ ≽ rv3.b
+    v3.behaviour ≺ (t ⇒ (if (t == 5) session._2.dispose()))
+    val vv = fn _ ≽ v3.behaviour
 
     v3.set(11)
-    checkRefs(rv1)
+    checkRefs(v1)
     v3.set(5)
-    checkRefs(rv1, rv2, rv3)
+    checkRefs(v1, v2, v3)
   }
 
 
@@ -195,30 +156,26 @@ final class LifecycleTests extends FunSuite {
     val v2 = variable(2)
     val v3 = variable(6)
     val v4 = variable(10)
-    val rv1 = new RefCount(v1)
-    val rv2 = new RefCount(v2)
-    val rv3 = new RefCount(v3)
-    var rv4 = new RefCount(v4)
 
-    def fn(x : Int)(y : Int) = if (x < y) rv1.b else rv2.b
+    def fn(x : Int)(y : Int) = if (x < y) v1.behaviour else v2.behaviour
 
-    val session = mkSession()
-    implicit val ctx = new BindContext(session, Participable.DefaultParticipable)
-    val vv = fn _ ≻ rv3.b ≽ rv4.b
+    val session = rootCtx.sub()
+    implicit val ctx = session._1
+    val vv = fn _ ≻ v3.behaviour ≽ v4.behaviour
 
     v3.set(20)
-    checkRefs(rv1)
+    checkRefs(v1)
 
     v3.set(5)
-    checkRefs(rv2)
+    checkRefs(v2)
 
     v4.set(3)
 
-    session.destroy()
-    checkRefs(rv1, rv2, rv3, rv4)
+    session._2.dispose()
+    checkRefs(v1, v2, v3, v4)
 
     v3.set(0)
-    checkRefs(rv1, rv2, rv3, rv4)
+    checkRefs(v1, v2, v3, v4)
   }
 
 
@@ -228,28 +185,24 @@ final class LifecycleTests extends FunSuite {
     val v2 = variable(2)
     val v3 = variable(6)
     var v4 = variable(10)
-    val rv1 = new RefCount(v1)
-    val rv2 = new RefCount(v2)
-    val rv3 = new RefCount(v3)
-    val rv4 = new RefCount(v4)
 
-    def fn(x : Int)(y : Int) = if (x < y) rv1.b else rv2.b
+    def fn(x : Int)(y : Int) = if (x < y) v1.behaviour else v2.behaviour
 
-    val session = mkSession()
-    implicit val ctx = new BindContext(session, Participable.DefaultParticipable)
+    val session = rootCtx.sub()
+    implicit val ctx = session._1
 
-    v3.behaviour ≺ (t ⇒ (if (t == 5) session.destroy()))
-    val vv = fn _ ≻ rv3.b ≽ rv4.b
+    v3.behaviour ≺ (t ⇒ (if (t == 5) session._2.dispose()))
+    val vv = fn _ ≻ v3.behaviour ≽ v4.behaviour
 
     v3.set(20)
-    checkRefs(rv1)
+    checkRefs(v1)
     v4.set(30)
-    checkRefs(rv2)
+    checkRefs(v2)
     v4.set(6)
-    checkRefs(rv1)
+    checkRefs(v1)
 
     v3.set(5)
-    checkRefs(rv1, rv2, rv3, rv4)
+    checkRefs(v1, v2, v3, v4)
   }
 
 
@@ -258,27 +211,24 @@ final class LifecycleTests extends FunSuite {
     val v1 = variable(1)
     val v2 = variable(2)
     val v3 = variable(6)
-    val rv1 = new RefCount(v1)
-    val rv2 = new RefCount(v2)
-    val rv3 = new RefCount(v3)
 
-    def fn(x : Int)(y : Int) = if (x < y) rv1.b else rv2.b
+    def fn(x : Int)(y : Int) = if (x < y) v1.behaviour else v2.behaviour
 
-    val session = mkSession()
-    implicit val ctx = new BindContext(session, Participable.DefaultParticipable)
-    val vv = fn _ ≻ rv3.b ≽ 10
+    val session = rootCtx.sub()
+    implicit val ctx = session._1
+    val vv = fn _ ≻ v3.behaviour ≽ 10
 
     v3.set(20)
-    checkRefs(rv1)
+    checkRefs(v1)
 
     v3.set(5)
-    checkRefs(rv2)
+    checkRefs(v2)
 
-    session.destroy()
-    checkRefs(rv1, rv2, rv3)
+    session._2.dispose()
+    checkRefs(v1, v2, v3)
 
     v3.set(100)
-    checkRefs(rv1, rv2, rv3)
+    checkRefs(v1, v2, v3)
   }
 
 
@@ -287,27 +237,24 @@ final class LifecycleTests extends FunSuite {
     val v1 = variable(1)
     val v2 = variable(2)
     val v3 = variable(6)
-    val rv1 = new RefCount(v1)
-    val rv2 = new RefCount(v2)
-    val rv3 = new RefCount(v3)
 
-    def fn(x : Int)(y : Int) = if (x < y) rv1.b else rv2.b
+    def fn(x : Int)(y : Int) = if (x < y) v1.behaviour else v2.behaviour
 
-    val session = mkSession()
-    implicit val ctx = new BindContext(session, Participable.DefaultParticipable)
+    val session = rootCtx.sub()
+    implicit val ctx = session._1
 
-    v3.behaviour ≺ (t ⇒ (if (t == 5) session.destroy()))
-    val vv = fn _ ≻ rv3.b ≽ 10
+    v3.behaviour ≺ (t ⇒ (if (t == 5) session._2.dispose()))
+    val vv = fn _ ≻ v3.behaviour ≽ 10
 
     v3.set(20)
-    checkRefs(rv1)
+    checkRefs(v1)
     v3.set(0)
-    checkRefs(rv2)
+    checkRefs(v2)
     v3.set(16)
-    checkRefs(rv1)
+    checkRefs(v1)
 
     v3.set(5)
-    checkRefs(rv1, rv2, rv3)
+    checkRefs(v1, v2, v3)
   }
 
 
@@ -315,22 +262,19 @@ final class LifecycleTests extends FunSuite {
   test("Join lives correctly") {
     val v1 = variable(2)
     val v2 = variable(4)
-    val rv1 = new RefCount(v1)
-    val rv2 = new RefCount(v2)
-    val v3 = variable(rv1.b)
-    val rv3 = new RefCount(v3)
+    val v3 = variable(v1.behaviour)
 
-    val session = mkSession()
-    implicit val ctx = new BindContext(session, Participable.DefaultParticipable)
-    val vv = flatten(rv3.b)
+    val session = rootCtx.sub()
+    implicit val ctx = session._1
+    val vv = flatten(v3.behaviour)
 
-    v3.set(rv2.b)
-    checkRefs(rv1)
-    v3.set(rv1.b)
-    checkRefs(rv2)
+    v3.set(v2.behaviour)
+    checkRefs(v1)
+    v3.set(v1.behaviour)
+    checkRefs(v2)
 
-    session.destroy()
-    checkRefs(rv1, rv2, rv3)
+    session._2.dispose()
+    checkRefs(v1, v2, v3)
   }
 
 
@@ -338,19 +282,16 @@ final class LifecycleTests extends FunSuite {
   test("Join can be deconstructed on the fly") {
     val v1 = variable(2)
     val v2 = variable(4)
-    val rv1 = new RefCount(v1)
-    val rv2 = new RefCount(v2)
-    val v3 = variable(rv1.b)
-    val rv3 = new RefCount(v3)
+    val v3 = variable(v1.behaviour)
 
-    val session = mkSession()
-    implicit val ctx = new BindContext(session, Participable.DefaultParticipable)
-    rv3.b ≺ (x ⇒ if (x `eq` rv2.b) session.destroy())
-    val vv = flatten(rv3.b)
+    val session = rootCtx.sub()
+    implicit val ctx = session._1
+    v3.behaviour ≺ (x ⇒ if (x `eq` v2.behaviour) session._2.dispose())
+    val vv = flatten(v3.behaviour)
 
-    v3.set(rv2.b)
+    v3.set(v2.behaviour)
 
-    checkRefs(rv1, rv2, rv3)
+    checkRefs(v1, v2, v3)
   }
 
 
@@ -360,23 +301,19 @@ final class LifecycleTests extends FunSuite {
     val v2 = variable(6)
     val v3 = variable(6)
     val v4 = variable(-1)
-    val rv1 = new RefCount(v1)
-    val rv2 = new RefCount(v2)
-    val rv3 = new RefCount(v3)
-    val rv4 = new RefCount(v4)
 
-    val session = mkSession()
-    implicit val ctx = new BindContext(session, Participable.DefaultParticipable)
+    val session = rootCtx.sub()
+    implicit val ctx = session._1
 
     def fn(base : Int, scope : BindContext) : Behaviour[Int] = {
       implicit val ctx = scope
       if (base > 0)
-        ((_ : Int) + (_ : Int)).curried ≻ rv1.b ≻ rv2.b
+        ((_ : Int) + (_ : Int)).curried ≻ v1.behaviour ≻ v2.behaviour
       else
-        ((_  : Int) - (_ : Int)).curried ≻ rv1.b ≻ rv3.b
+        ((_  : Int) - (_ : Int)).curried ≻ v1.behaviour ≻ v3.behaviour
     }
 
-    val res = fn _ ~≽ rv4.b
+    val res = fn _ ~≽ v4.behaviour
 
     assert(-4 === res.value)
 
@@ -385,7 +322,7 @@ final class LifecycleTests extends FunSuite {
 
     v4.set(7)
     assert(8 === res.value)
-    checkRefs(rv3)
+    checkRefs(v3)
 
 
     v2.set(6)
@@ -395,10 +332,11 @@ final class LifecycleTests extends FunSuite {
 
     v4.set(-6)
     assert(8 === res.value)
-    checkRefs(rv2)
+    checkRefs(v2)
 
-    session.destroy()
-    checkRefs(rv1, rv2, rv3, rv4)
+    session._2.dispose()
+    checkRefs(v1, v2, v3, v4)
   }
 
 }
+

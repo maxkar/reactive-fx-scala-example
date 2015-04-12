@@ -4,7 +4,7 @@ import org.scalatest.FunSuite
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value.syntax._
-import ru.maxkar.reactive.wave.Wave
+import ru.maxkar.reactive.proc.Activator
 
 final class ValueTest extends FunSuite {
   implicit val ctx = permanentBind
@@ -37,10 +37,10 @@ final class ValueTest extends FunSuite {
     assert("AOE" === v1.value)
     assert("EOA" === v2.value)
 
-    Wave.group(txn ⇒ {
-      v1.wavedSet("35", txn)
-      v2.wavedSet("TT", txn)
-    })
+    Activator.batch {
+      v1.set("35")
+      v2.set("TT")
+    }
 
     assert("35" === v1.value)
     assert("TT" === v2.value)
@@ -123,7 +123,7 @@ final class ValueTest extends FunSuite {
     val v2 = variable(0)
     val v3 = variable(5)
 
-    val v = fn _ ≻ v1.behaviour ≻ v2.behaviour≻ v3.behaviour
+    val v = fn _ ≻ v1.behaviour ≻ v2.behaviour ≻ v3.behaviour
     val ups = count(v)
     assert(5 === v.value)
     assert(0 === ups())
@@ -133,11 +133,11 @@ final class ValueTest extends FunSuite {
     assert(0 === ups())
 
 
-    Wave.group(w ⇒ {
-      v1.wavedSet(3, w)
-      v2.wavedSet(2, w)
-      v3.wavedSet(-1, w)
-    })
+    Activator.batch {
+      v1.set(3)
+      v2.set(2)
+      v3.set(-1)
+    }
     assert(5 === v.value)
     assert(0 === ups())
 
@@ -230,8 +230,8 @@ final class ValueTest extends FunSuite {
      */
     object FlipTest {
       val a = variable(false)
-      val c = f _ ≽ a.behaviour
-      val b = g _ ≽ a.behaviour
+      val c = f _ ≽ a
+      val b = g _ ≽ a
 
       def f(v : Boolean) : Behaviour[Boolean] = if (v) b else a
       def g(v : Boolean) : Behaviour[Boolean] = if (v) a else c
@@ -276,7 +276,7 @@ final class ValueTest extends FunSuite {
         ((_  : Int) - (_ : Int)).curried ≻ v1.behaviour ≻ v2.behaviour
     }
 
-    val res = fn _ ~≽ v3.behaviour
+    val res = fn _ ~≽ v3
     val ups = count(res)
 
     assert(-4 === res.value)
@@ -310,4 +310,5 @@ final class ValueTest extends FunSuite {
     assert(3 === ib)
   }
 }
+
 

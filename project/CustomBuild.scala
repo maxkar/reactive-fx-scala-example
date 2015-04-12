@@ -148,9 +148,8 @@ object CustomBuild extends Build {
 
   /* Libraries. */
   lazy val lib_fun = prj("lib/fun")
-  lazy val lib_reactive1 = prj("lib/reactive1", lib_fun)
   lazy val lib_reactive = prj("lib/reactive", lib_fun)
-  lazy val lib_async = prj("lib/async", lib_reactive1, lib_fun)
+  lazy val lib_async = prj("lib/async", lib_reactive, lib_fun)
 
   /* Projects. */
   lazy val app = prj("app", lib_async)
@@ -160,7 +159,6 @@ object CustomBuild extends Build {
   ).aggregate(
     lib_fun,
     lib_reactive,
-    lib_reactive1,
     lib_async,
     app
   )

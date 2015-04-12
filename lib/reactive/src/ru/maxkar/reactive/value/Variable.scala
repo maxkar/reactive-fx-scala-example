@@ -1,57 +1,68 @@
 package ru.maxkar.reactive.value
 
-import ru.maxkar.reactive.value.event.Event
-import ru.maxkar.reactive.wave.Wave
-import ru.maxkar.reactive.wave.Participable
+import ru.maxkar.reactive.proc._
 
 /**
- * Behaviour "variable". This class allows direct "push" request
- * to current state. However, this behaviour never can depend on
- * other behaviours. In the dependency graph this behaviour represents
- * a leaf node.
- * @param T type of the value.
- * @param value currentValue (and initial) value.
+ * Mutable/changeable behaviour. Could be explicitly set by user.
+ * @param T variable type.
+ * @param v initial and current value.
  */
-final class Variable[T] private[value] (
-      private var currentValue : T) {
+final class Variable[T] private[value](private var v : T)
+    extends Behaviour[T] {
 
-  /** Event trigger associated with this variable. */
-  private val trigger = Event.trigger(Participable.DefaultParticipable)
+  /** Next value to set. */
+  private var nextValue : Option[T] = None
 
 
+  /** "Changed" flag for this node. */
+  private var changed = false
 
-  /**
-   * Sets value as a part of the wave. If new value equals to old value,
-   * then new value is ignored.
-   * @param newValue new value to set.
-   * @param wave current propagation wave.
-   */
-  def wavedSet(newValue : T, wave : Wave) : Unit = {
-    if (currentValue == newValue)
-      return
-    currentValue = newValue
-    trigger.trigger(wave)
+
+  /** Action and procedure for this node. */
+  private val (action, proc) =
+    Procedure.generator(updateValue, () ⇒ changed = false)
+
+
+  /** Updates actual value. */
+  private def updateValue() : Unit = {
+    if (nextValue.get != v) {
+      changed = true
+      v = nextValue.get
+    }
+    nextValue = None
   }
 
 
+  /* IMPLEMENTATION */
+  override def value() : T = v
+  override val change = Signal(proc, changed)
 
-  /**
-   * Sets a new value in a brand new wave. If new value equals to
-   * old value, then new value is ignored and event is not fired.
-   * @param newValue new value to set.
-   */
+
+  /** Sets a new value. */
   def set(newValue : T) : Unit =
-    Wave.group(wave ⇒ wavedSet(newValue, wave))
+    nextValue match {
+      case None ⇒
+        if (newValue != v) {
+          nextValue = Some(newValue)
+          action.activate()
+        }
+      case Some(x) ⇒
+        nextValue = Some(newValue)
+    }
 
+
+
+  /** Returns this variable as behaviour. Could be useful for functors, etc... */
+  val behaviour : Behaviour[T] = this
 
 
   /**
-   * Behaviour associated with this variable.
+   * Latest value (including pending updates). Could be useful if this behaviour
+   * is changed as a result of other actions.
    */
-  val behaviour : Behaviour[T] = new Behaviour[T] {
-    /* IMPLEMENTATION. */
-    override def value() : T = currentValue
-    override val change : Event[Boolean] = trigger.event
-  }
+  def latestValue() : T =
+    nextValue match {
+      case None ⇒ v
+      case Some(x) ⇒ x
+    }
 }
-

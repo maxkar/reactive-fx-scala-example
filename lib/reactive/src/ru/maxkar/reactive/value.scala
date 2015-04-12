@@ -1,21 +1,18 @@
 package ru.maxkar.reactive
 
-import ru.maxkar.reactive.wave.Participable
-import ru.maxkar.reactive.value.event.Event
+import ru.maxkar.reactive.deps.PermanentBinder
+import ru.maxkar.reactive.proc.Procedure
+import ru.maxkar.reactive.proc.{Specification ⇒ Specs}
 
-/**
- * Reactive definitions and operations package.
- * Provides a conveinence import mechanics by importing
- * ru.maxkar.reactive._ only.
- */
+
+/** Value-related reactive definitions. */
 package object value {
   import scala.language.implicitConversions
 
   /**
    * Permanent binding between base and dependent values.
    */
-  val permanentBind : BindContext =
-    new BindContext(Lifespan.forever, Participable.DefaultParticipable)
+  val permanentBind : BindContext = new BindContext(PermanentBinder)
 
 
   /**
@@ -32,9 +29,6 @@ package object value {
    */
   def const[T](v : T) : Behaviour[T] = new Behaviour[T] {
     override def value() = v
-    override val change = Event.constFalseEvent
+    override val change = Signal(Procedure.generator(() ⇒ ())._2, false)
   }
-
-
-  implicit def behaviourOf[T](v : Variable[T]) : Behaviour[T] = v.behaviour
 }

@@ -1,76 +1,46 @@
 package ru.maxkar.reactive.value
 
-import ru.maxkar.reactive.value.event.Event
-import ru.maxkar.reactive.wave.Participant
-import ru.maxkar.reactive.wave.Wave
+import ru.maxkar.reactive.deps.Binder
+import ru.maxkar.reactive.proc.Procedure
+import ru.maxkar.reactive.proc.{Specification ⇒ Specs}
 
 
-/**
- * Behaviour which applies a "map" function to get another reactive value.
- * @param S source type.
- * @param T destination (value) type.
- * @param mapper map function.
- * @param source source behaviour.
- */
-private[value] final class MapBehaviour[S, T](
-      mapper : S ⇒ T, source : Behaviour[S],
-      ctx : BindContext)
-    extends Behaviour[T] {
-
-  /** Wave participant. */
-  private val participant =
-    ctx.update.participant(participate, resolved, reset)
-  source.change.addCorrelatedNode(participant)
-
-
+/** Fmap function implementation. */
+private[value] final class MapBehaviour[S, R](
+      binder : Binder, fn : S ⇒ R, item : Behaviour[S])
+    extends Behaviour[R] {
 
   /** Current value. */
-  private var currentValue = mapper(source.value)
+  private var v = fn(item.value)
 
-
-
-  /** Flag indicating that value was changed during current wave. */
+  /** Change flag. */
   private var changed = false
 
 
+  /** Update procedure. */
+  private val proc =
+    Procedure.compile(
+      Specs.seq(
+        Specs.await(item.change.procedure),
+        Specs.forUnit { update() }
+      ),
+      binder,
+      () ⇒ changed = false)
 
-  /** Participation handler. */
-  private def participate(w : Wave) : Unit =
-    source.change.defer(participant)
 
 
-
-  /** Marks this node as resovled. */
-  private def resolved(w : Wave) : Unit = {
-    /* No update, just return. */
-    if (!source.change.value)
+  /** Updates current value. */
+  private def update() : Unit = {
+    if (!item.change.value)
       return
-
-    val newValue = mapper(source.value)
-    if (newValue == currentValue)
-      return
-
-    currentValue = newValue
-    changed = true
+    val nv = fn(item.value)
+    if (nv != v) {
+      v = nv
+      changed = true
+    }
   }
 
 
-
-  /** Resets this node after wave completion. */
-  private def reset() : Unit = changed = false
-
-
-
-  /** Disposes this node. */
-  private[value] def dispose() : Unit =
-    source.change.removeCorrelatedNode(participant)
-
-
-
-  /* IMPLEMENTATION. */
-
-  override def value() : T = currentValue
-
-  override val change = Event.fromParticipant(participant, changed)
+  override def value() = v
+  override val change = Signal(proc, changed)
 }
-

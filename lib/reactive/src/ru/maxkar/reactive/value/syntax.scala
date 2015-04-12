@@ -18,6 +18,7 @@ package object syntax {
       subfmap(v)(ctx)
   }
 
+
   implicit class FnToSubmap[S, R](val fn : (S, BindContext) ⇒ Behaviour[R]) extends AnyVal {
     @inline
     def submmap(v : Behaviour[S])(implicit ctx : BindContext) : Behaviour[R] =
@@ -40,18 +41,20 @@ package object syntax {
 
 
     @inline
+    def ≼~ [R](
+          fn : (V, BindContext) ⇒ Behaviour[R])(
+          implicit ctx : BindContext)
+        : Behaviour[R] =
+      rsubmmap(fn)(ctx)
+
+
+    @inline
     def rsubfmap[R](
           fn : (V, BindContext) ⇒ R)(
           implicit ctx : BindContext)
         : Behaviour[R] =
       ctx.subfmap(fn, v)
 
-    @inline
-    def ≼~ [R](
-          fn : (V, BindContext) ⇒ Behaviour[R])(
-          implicit ctx : BindContext)
-        : Behaviour[R] =
-      rsubmmap(fn)(ctx)
 
 
     @inline
@@ -62,3 +65,4 @@ package object syntax {
       rsubfmap(fn)(ctx)
   }
 }
+

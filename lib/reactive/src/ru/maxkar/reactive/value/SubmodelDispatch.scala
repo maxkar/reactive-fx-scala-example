@@ -1,93 +1,72 @@
 package ru.maxkar.reactive.value
 
-import ru.maxkar.reactive.value.event.Event
-import ru.maxkar.reactive.wave.Participant
-import ru.maxkar.reactive.wave.Wave
+import ru.maxkar.reactive.deps.Binder
+import ru.maxkar.reactive.proc.Procedure
+import ru.maxkar.reactive.proc.{Specification ⇒ Specs}
 
 
-/**
- * Submodel bound to a lifetime of parent value.
- */
+/** Implementation of submodel dispatch.  */
 private[value] final class SubmodelDispatch[S, R](
-      mapper : (S, BindContext) ⇒ R,
-      base : Behaviour[S],
-      ctx : BindContext)
+      binder : Binder, fn : (S, BindContext) ⇒ Behaviour[R], base : Behaviour[S])
     extends Behaviour[R] {
 
-  /** Wave participant. */
-  private val participant =
-    ctx.update.participant(participate, resolved, reset)
-  base.change.addCorrelatedNode(participant)
+  /** Sub-binder and its destructor. */
+  private var (subBinder, subDtor) = binder.sub()
 
+  /** Dependent model. */
+  private var basem = fn(base.value(), new BindContext(subBinder))
 
+  /** Current value. */
+  private var v = basem.value()
 
-  /**
-   * Child lifecycle. Set to <code>null</code> after this
-   * node is disposed.
-   */
-  private var childLifecycle = new Session()
-
-
-
-  /**
-   * Nested (inner) model, produced by the function for
-   * the current value).
-   */
-  private var currentValue =
-    mapper(base.value,
-      new BindContext(childLifecycle, ctx.update))
-
-
-
-  /** Flag indicating that value was changed during current wave.  */
+  /** Change flag. */
   private var changed = false
 
 
 
-  /** Participation handler. */
-  private def participate(w : Wave) : Unit =
-    base.change.defer(participant)
+  /** Update procedure. */
+  private val proc =
+    Procedure.compile(
+      Specs.seq(
+        Specs.await(base.change.procedure),
+        Specs.forUnit { reevalAfterBase },
+        Specs.dynamicBindTo(basem.change.procedure),
+        Specs.forUnit { updateValue }
+      ),
+      binder,
+      () ⇒ changed = false)
 
 
 
-  /** Marks this node as resovled. */
-  private def resolved(w : Wave) : Unit = {
-    if (childLifecycle == null)
+  /** Updates after base is ready. */
+  private def reevalAfterBase() : Unit = {
+    if (!base.change.value())
       return
 
-    if (!base.change.value)
+    subDtor.dispose()
+    val (nsb, nsd) = binder.sub()
+    subBinder = nsb
+    subDtor = nsd
+    basem = fn(base.value(), new BindContext(subBinder))
+  }
+
+
+
+  /** Updates current value. */
+  private def updateValue() : Unit = {
+    if (!base.change.value() && !basem.change.value())
       return
 
-
-    childLifecycle.destroy()
-    childLifecycle = new Session()
-    val newValue = mapper(base.value, new BindContext(childLifecycle, w))
-    if (newValue != currentValue) {
+    val nv = basem.value()
+    if (nv != v) {
+      v = nv
       changed = true
-      currentValue = newValue
     }
   }
 
 
 
-  /** Resets this node after wave completion. */
-  private def reset() : Unit = changed = false
-
-
-
-  /** Disposes this node. */
-  private[value] def dispose() : Unit = {
-    base.change.removeCorrelatedNode(participant)
-    childLifecycle.destroy()
-    childLifecycle = null
-  }
-
-
-
-  /* IMPLEMENTATION. */
-
-  override def value() : R = currentValue
-
-  override val change = Event.fromParticipant(participant, changed)
+  /* IMPLEMENTATION */
+  override def value() = v
+  override val change = Signal(proc, changed)
 }
-

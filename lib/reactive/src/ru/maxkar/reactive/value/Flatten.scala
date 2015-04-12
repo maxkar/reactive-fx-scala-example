@@ -1,108 +1,47 @@
 package ru.maxkar.reactive.value
 
-import ru.maxkar.reactive.value.event.Event
-import ru.maxkar.reactive.wave.Participant
-import ru.maxkar.reactive.wave.Wave
+import ru.maxkar.reactive.deps.Binder
+import ru.maxkar.reactive.proc.Procedure
+import ru.maxkar.reactive.proc.{Specification ⇒ Specs}
 
-/**
- * Flatten behaviour. Joins two Behaviour[Behaviour[T]] into Behaviour[T].
- * @param T value type.
- * @param source behaviour to join.
- */
+
+/** Behaviour flattening value. */
 private[value] final class Flatten[T](
-      source : Behaviour[Behaviour[T]],
-      ctx : BindContext)
+      binder : Binder, base : Behaviour[Behaviour[T]])
     extends Behaviour[T] {
 
-  /**
-   * Flag, indicating that this node is disposed.
-   */
-  private var disposed : Boolean = false
-
-
-
-  /** Wave participant. */
-  private val participant =
-    ctx.update.participant(participate, resolved, reset)
-  source.change.addCorrelatedNode(participant)
-
-
-  /** Peer behaviour. */
-  private var nestedSource = source.value
-  nestedSource.change.addCorrelatedNode(participant)
-
-
-
   /** Current value. */
-  private var currentValue = nestedSource.value
+  private var v = base.value().value()
 
-
-
-  /** Flag indicating that value was changed during current wave. */
+  /** Change flag. */
   private var changed = false
 
 
-
-  /** Participation handler. */
-  private def participate(w : Wave) : Unit = {
-    source.change.defer(participant)
-    participant.invokeBeforeResolve(onBaseResolved)
-  }
-
-
-
-  /** Handles a "base resolved" event. */
-  private def onBaseResolved(w : Wave) : Unit =
-    source.value.change.defer(participant)
+  /** Update procedure. */
+  private val proc =
+    Procedure.compile(
+      Specs.seq(
+        Specs.await(base.change.procedure),
+        Specs.dynamicBindTo(base.value().change.procedure),
+        Specs.forUnit { update() }),
+      binder,
+      () ⇒ changed = false)
 
 
-
-  /** Marks this node as resovled. */
-  private def resolved(w : Wave) : Unit = {
-    if (disposed)
+  /** Updates current value. */
+  private def update() : Unit = {
+    if (!base.change.value() && !base.value().change.value())
       return
 
-    /* No update, just return. */
-    if (!source.change.value && !nestedSource.change.value)
-      return
-
-    /* Update flattened source. */
-    if (source.change.value) {
-      nestedSource.change.removeCorrelatedNode(participant)
-      nestedSource = source.value
-      nestedSource.change.addCorrelatedNode(participant)
+    val nv = base.value().value()
+    if (nv != v) {
+      changed = true
+      v = nv
     }
-
-    val newValue = nestedSource.value
-
-    if (newValue == currentValue)
-      return
-
-    currentValue = newValue
-    changed = true
   }
-
-
-
-  /** Resets this node after wave completion. */
-  private def reset() : Unit = changed = false
-
-
-
-  /** Disposes this node. */
-  private[value] def dispose() : Unit = {
-    source.change.removeCorrelatedNode(participant)
-    nestedSource.change.removeCorrelatedNode(participant)
-    disposed = true
-  }
-
-
 
 
   /* IMPLEMENTATION. */
-
-  override def value() : T = currentValue
-
-  override val change = Event.fromParticipant(participant, changed)
+  override def value() = v
+  override val change = Signal(proc, changed)
 }
-

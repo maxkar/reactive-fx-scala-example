@@ -2,27 +2,35 @@ package ru.maxkar.reactive.value
 
 import ru.maxkar.fun._
 
-import ru.maxkar.reactive.wave.Participable
+import ru.maxkar.reactive.Disposable
+import ru.maxkar.reactive.deps.Binder
+import ru.maxkar.reactive.proc.Procedure
+import ru.maxkar.reactive.proc.{Specification ⇒ Specs}
+
 
 /**
- * Context used for value binding. Holds both
- * lifecycle context for the binding and current
- * update wave (if any).
- * @param lifespan bind lifetime context.
- * @param update update participation context.
+ * Reactive binding context. Also implements monadic bindings for
+ * reactive programming.
+ * @param binder model binder used in this context.
  */
-final class BindContext(
-      val lifespan : Lifespan,
-      val update : Participable)
+final class BindContext(val binder : Binder)
     extends Monad[Behaviour] {
 
-  /* Functor implementation (more effective than default). */
 
-  override def fmap[S, R](fn : S ⇒ R, item : Behaviour[S]) : Behaviour[R] = {
-    val res = new MapBehaviour(fn, item, this)
-    lifespan.onDispose(res.dispose)
-    res
+  /** Creates a sub-context. This new context could be disposed manually or
+   * by destroying this context manually.
+   * @returns pair of new bind context and its destructor.
+   */
+  def sub() : (BindContext, Disposable) = {
+    val (nb, dest) = binder.sub
+    (new BindContext(nb), dest)
   }
+
+
+
+  /* Functor implementation (more effective than default). */
+  override def fmap[S, R](fn : S ⇒ R, item : Behaviour[S]) : Behaviour[R] =
+    new MapBehaviour(binder, fn, item)
 
 
 
@@ -30,24 +38,15 @@ final class BindContext(
 
   override def pure[T](v : T) : Behaviour[T] = const(v)
 
-  override def aapply[S, R](fn : Behaviour[S ⇒ R], v : Behaviour[S]) : Behaviour[R] = {
-    val res = new ApplicativeBehaviour(fn, v, this)
-    lifespan.onDispose(res.dispose)
-    res
-  }
+  override def aapply[S, R](fn : Behaviour[S ⇒ R], v : Behaviour[S]) : Behaviour[R] =
+    new ApplicativeBehaviour(binder, fn, v)
 
-
-  /* Monad implementation. */
-
-  override def flatten[V](x : Behaviour[Behaviour[V]]) : Behaviour[V] = {
-    val res = new Flatten(x, this)
-    lifespan.onDispose(res.dispose)
-    res
-  }
-
+  override def flatten[V](x : Behaviour[Behaviour[V]]) : Behaviour[V] =
+    new Flatten(binder, x)
 
   override def bind[S, R](fn : S ⇒ Behaviour[R], v : Behaviour[S]) : Behaviour[R] =
     flatten(fmap(fn, v))
+
 
 
   /* Lifecycle/subcontext binding. */
@@ -63,11 +62,9 @@ final class BindContext(
   def subfmap[S, R](
         fn : (S, BindContext) ⇒ R,
         v : Behaviour[S])
-      : Behaviour[R] = {
-    var res = new SubmodelDispatch(fn, v, this)
-    lifespan.onDispose(res.dispose)
-    res
-  }
+      : Behaviour[R] =
+    new ShallowSubmodelDispatch(binder, fn, v)
+
 
 
   /**
@@ -82,5 +79,5 @@ final class BindContext(
         fn : (S, BindContext) ⇒ Behaviour[R],
         v : Behaviour[S])
       : Behaviour[R] =
-    flatten(subfmap(fn, v))
+    new SubmodelDispatch(binder, fn, v)
 }

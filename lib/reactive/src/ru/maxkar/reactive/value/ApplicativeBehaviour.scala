@@ -1,79 +1,47 @@
 package ru.maxkar.reactive.value
 
-import ru.maxkar.reactive.value.event.Event
-import ru.maxkar.reactive.wave.Participant
-import ru.maxkar.reactive.wave.Wave
+import ru.maxkar.reactive.deps.Binder
+import ru.maxkar.reactive.proc.Procedure
+import ru.maxkar.reactive.proc.{Specification ⇒ Specs}
 
-/**
- * Applicative function application implementation.
- * @palam fn applicative function.
- * @param base base value.
- */
+
+/** Implementation of the applicative behaviour. */
 private[value] final class ApplicativeBehaviour[S, R](
-      fn : Behaviour[S ⇒ R],
-      base : Behaviour[S],
-      context : BindContext)
+      binder : Binder, fn : Behaviour[S ⇒ R], base : Behaviour[S])
     extends Behaviour[R] {
 
-
-  /** Wave participant. */
-  private val participant =
-    context.update.participant(participate, resolved, reset)
-  fn.change.addCorrelatedNode(participant)
-  base.change.addCorrelatedNode(participant)
-
-
-
   /** Current value. */
-  private var currentValue = fn.value()(base.value)
+  private var v = fn.value()(base.value())
 
-
-
-  /** Flag indicating that value was changed during current wave. */
+  /** Change flag. */
   private var changed = false
 
 
+  /** Update procedure. */
+  private var proc =
+    Procedure.compile(
+      Specs.seq(
+        Specs.await(fn.change.procedure, base.change.procedure),
+        Specs.forUnit { update() }),
+      binder,
+      () ⇒ changed = false)
 
-  /** Participation handler. */
-  private def participate(w : Wave) : Unit = {
-    fn.change.defer(participant)
-    base.change.defer(participant)
-  }
 
-
-
-  /** Marks this node as resovled. */
-  private def resolved(w : Wave) : Unit = {
-    /* No update, just return. */
-    if (!fn.change.value && !base.change.value)
+  /** Updates current behaviour. */
+  private def update() : Unit = {
+    if (!fn.change.value() && !base.change.value())
       return
 
-    val newValue = fn.value()(base.value)
-    if (newValue == currentValue)
-      return
-
-    currentValue = newValue
-    changed = true
+    val nv = fn.value()(base.value())
+    if (nv != v) {
+      changed = true
+      v = nv
+    }
   }
 
 
 
-  /** Resets this node after wave completion. */
-  private def reset() : Unit = changed = false
-
-
-
-  private[value] def dispose() : Unit = {
-    fn.change.removeCorrelatedNode(participant)
-    base.change.removeCorrelatedNode(participant)
-  }
-
-
-
-  /* IMPLEMENTATION. */
-
-  override def value() : R = currentValue
-
-  override val change = Event.fromParticipant(participant, changed)
+  /* IMPLEMENTATION */
+  override def value() = v
+  override val change = Signal(proc, changed)
 }
-
