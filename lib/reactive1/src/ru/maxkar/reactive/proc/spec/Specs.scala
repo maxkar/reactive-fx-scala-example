@@ -43,7 +43,7 @@ object Specs {
   /** Creates a sequence of actions. */
   def sequence(specs : Specification*) : Specification =
     specs.length match {
-      case 0 ⇒ exec {}
+      case 0 ⇒ noop
       case 1 ⇒ specs.head
       case _ ⇒ sequenceImpl(specs)
     }

@@ -11,4 +11,10 @@ final object Introspector {
    */
   def activationDepCount(proc : Procedure) : Int =
     proc.activations.iterator.size
+
+
+
+  /** Returns iterator for procedure dependencies. */
+  def iterateActivationDeps(proc : Procedure) : Iterator[Procedure] =
+    proc.activations.iterator
 }
