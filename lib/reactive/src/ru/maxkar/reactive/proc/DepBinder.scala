@@ -11,7 +11,7 @@ import ru.maxkar.reactive.deps.Binder
  * @param procedure procedure to use during bindings.
  * @param binder dependency binder.
  */
-final class DownstreamDeps private[proc](
+final class DepBinder private[proc](
         procedure : Procedure,
         binder : Binder) {
 

@@ -98,7 +98,7 @@ final object Action {
    *     on step 1 is different from previously registered binding.
    * </ol>
    */
-  def dynamicBindTo(binder : DownstreamDeps, block : ⇒ Procedure) : Action = {
+  def dynamicBindTo(binder : DepBinder, block : ⇒ Procedure) : Action = {
     var last = block
     var reg = binder += last
 

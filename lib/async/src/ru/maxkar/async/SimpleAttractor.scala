@@ -36,7 +36,7 @@ private[async] final class SimpleAttractor[V, R](
   private val proc =
     Procedure.compile(
       new Specification {
-        override def compile(dep : DownstreamDeps) : Action = {
+        override def compile(dep : DepBinder) : Action = {
           dep += base.change.procedure
 
           Action.seq(

@@ -41,7 +41,7 @@ final class Procedure private(
 
   /** Action used to create processes. */
   private val action = {
-    val db = new DownstreamDeps(this, binder)
+    val db = new DepBinder(this, binder)
     val act = spec.compile(db)
     if (db.completeInit())
       Execution.autoactivate(this)

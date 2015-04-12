@@ -22,7 +22,7 @@ trait Specification {
    *  new procedure and existing ones.
    * @return compiled representation of action defined by this specification.
    */
-  def compile(binder : DownstreamDeps) : Action
+  def compile(binder : DepBinder) : Action
 }
 
 
@@ -34,7 +34,7 @@ final object Specification {
   /** No-operation action. */
   val noop : Specification =
     new Specification {
-      override def compile(binder : DownstreamDeps) : Action = Action.noop
+      override def compile(binder : DepBinder) : Action = Action.noop
     }
 
 
@@ -48,7 +48,7 @@ final object Specification {
       noop
     else
       new Specification() {
-        override def compile(binder : DownstreamDeps) : Action = {
+        override def compile(binder : DepBinder) : Action = {
           items.foreach(binder += _)
           Action.await(items : _*)
         }
@@ -59,7 +59,7 @@ final object Specification {
   /** Preforms a specification which executes an empty action. */
   def forUnit(block : ⇒ Unit) : Specification =
     new Specification {
-      override def compile(binder : DownstreamDeps) : Action =
+      override def compile(binder : DepBinder) : Action =
         Action.forUnit(block)
     }
 
@@ -71,7 +71,7 @@ final object Specification {
    */
   def dynamicBindTo(block : ⇒ Procedure) : Specification =
     new Specification {
-      override def compile(binder : DownstreamDeps) : Action =
+      override def compile(binder : DepBinder) : Action =
         Action.dynamicBindTo(binder, block)
     }
 
@@ -87,7 +87,7 @@ final object Specification {
       case 1 ⇒ specs.head
       case _ ⇒
         new Specification() {
-          override def compile(binder : DownstreamDeps) : Action =
+          override def compile(binder : DepBinder) : Action =
             Action.seq(specs.map(_.compile(binder)) : _*)
         }
     }
