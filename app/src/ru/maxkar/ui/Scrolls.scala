@@ -1,10 +1,17 @@
 package ru.maxkar.ui
 
 import java.awt.Point
+import java.awt.Dimension
+import java.awt.event.ComponentAdapter
+import java.awt.event.ComponentEvent
 import java.awt.event.MouseAdapter
 import java.awt.event.MouseEvent
 
+import javax.swing.JScrollPane
 import javax.swing.JViewport
+
+import ru.maxkar.fun.syntax._
+import ru.maxkar.reactive.value._
 
 
 /**
@@ -40,6 +47,22 @@ object Scrolls {
       override def mousePressed(e : MouseEvent) : Unit =
         basePoint = e.getPoint()
     })
+  }
+
+
+
+  /**
+   * Returns viewport size as a behaviour.
+   */
+  def viewportSize(pane : JScrollPane) : Behaviour[Dimension] = {
+    val res = variable(pane.getViewport().getExtentSize())
+
+    pane addComponentListener new ComponentAdapter() {
+      override def componentResized(e : ComponentEvent) : Unit =
+        res set pane.getViewport().getExtentSize()
+    }
+
+    res
   }
 
 

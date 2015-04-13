@@ -31,12 +31,13 @@ object Controls {
         implicit ctx : BindContext)
       : JComponent = {
     val res = new JComboBox[T](items.toArray[T])
-    cur ≺ res.setSelectedItem
+    cur ≺ (x ⇒
+      res.setSelectedItem(if (items.contains(x)) x else null))
 
     res addActionListener new ActionListener() {
       override def actionPerformed(e : ActionEvent) : Unit = {
         val mitem = res.getSelectedItem().asInstanceOf[T]
-        if (cur.value == mitem)
+        if (mitem == null || cur.value == mitem)
           return
         selector(mitem)
         /* Rebind value because model is authoritative, not a combo. */

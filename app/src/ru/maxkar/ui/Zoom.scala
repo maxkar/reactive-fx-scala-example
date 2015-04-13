@@ -66,7 +66,7 @@ object Zoom {
           origW : Double, origH : Double,
           targetW : Double, targetH : Double)
         : Double =
-      Math.min(Math.min(targetW / origW, targetH / origH), 1.0)
+      Math.min(Fit.scaleFor(origW, origH, targetW, targetH), 1.0)
 
     override def toString() : String = "Smart fit"
   }

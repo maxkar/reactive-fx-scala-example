@@ -51,43 +51,19 @@ object ImagePane {
         implicit ctx : BindContext)
       : ImagePane = {
 
-    val outerBounds = variable(new Dimension(0, 0))
-    val width = image.getWidth
-    val height = image.getHeight
-    val renderer = new ImageBuffer(image)
-
     val ui = new JScrollPane(
       ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
       ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER)
-    ui addComponentListener new ComponentAdapter() {
-      override def componentResized(e : ComponentEvent) : Unit =
-        outerBounds set ui.getViewport().getExtentSize()
-    }
 
+    val outerBounds = Scrolls.viewportSize(ui)
 
-    val zoomFactor =
-      effectiveZoomFor(image.getWidth, image.getHeight) _ ≻ outerBounds.behaviour ≻ zoom
-    val targetSize =
-      ImageBuffer.targetImageSize(image.getWidth, image.getHeight) _ ≻ zoomFactor
-    val sizeGoal =
-      preferredSizeFor _ ≻ outerBounds.behaviour ≻ targetSize
+    val zoomFactor = effectiveZoomFor(image) _ ≻ outerBounds ≻ zoom
+    val scaler = new ScaleBuffer()
+    val scaledState = (scaler.render _).curried(image) ≻ zoomFactor
+    val sizeGoal = preferredSizeFor _ ≻ outerBounds ≻ scaledState
 
-
-    val inner = new JComponent(){
-      override def paintComponent(g : Graphics) : Unit = {
-        super.paintComponents(g)
-        val sz = this.getSize()
-        renderer.renderTo(g, sz.width, sz.height, zoomFactor.value)
-      }
-    }
-
-    sizeGoal ≺ (x ⇒ {
-      inner.setPreferredSize(x)
-      inner.revalidate()
-      inner.repaint()
-    })
-
-    targetSize ≺ (x ⇒ inner.repaint())
+    val inner = new RendererComponent()
+    (inner.updateContent _).curried ≻ scaledState ≻ sizeGoal
 
     ui.getViewport.setView(inner)
     ui setBorder null
@@ -104,34 +80,25 @@ object ImagePane {
    * scrollpane result.
    */
   private def preferredSizeFor(
-        imageSize : Dimension)(
-        viewportSize : Dimension)
+        viewportSize : Dimension)(
+        scaledState : (_, Dimension))
       : Dimension =
     new Dimension(
-      Math.max(viewportSize.width - 2, imageSize.width),
-      Math.max(viewportSize.height - 2, imageSize.height))
+      Math.max(viewportSize.width - 2, scaledState._2.width),
+      Math.max(viewportSize.height - 2, scaledState._2.height))
 
 
 
   /**
-   * Calculates an effective zoom factor for specific image sizes
-   * and outer component width.
+   * Calculates an effective zoom for the image, selected zoom and actual
+   * viewport size.
    */
   private def effectiveZoomFor(
-        width : Int, height : Int)(
+        image : BufferedImage)(
         viewportSize : Dimension)(
         zoom : Zoom)
       : Double =
-    zoom match {
-      case Zoom.Fixed(factor) ⇒ factor
-      case Zoom.Fit ⇒
-        Math.min(
-          viewportSize.width.toDouble / width,
-          viewportSize.height.toDouble / height)
-      case Zoom.SmartFit ⇒
-        Math.min(1.0,
-          Math.min(
-            viewportSize.width.toDouble / width,
-            viewportSize.height.toDouble / height))
-    }
+    zoom.scaleFor(
+      image.getWidth, image.getHeight,
+      viewportSize.getWidth, viewportSize.getHeight)
 }
