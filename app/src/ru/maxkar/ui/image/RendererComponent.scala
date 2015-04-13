@@ -21,13 +21,10 @@ private[image] final class RendererComponent extends JComponent {
    * @param display image and renderable size used for display.
    * @param prefSize preferred component size.
    */
-  private[image] def updateContent(
-        display : (BufferedImage, Dimension),
-        prefSize : Dimension)
-      : Unit = {
-    setPreferredSize(prefSize)
+  private[image] def updateContent(display : (BufferedImage, Dimension)) : Unit = {
     img = display._1
     renderDims = display._2
+    setPreferredSize(renderDims)
     revalidate()
     repaint()
   }

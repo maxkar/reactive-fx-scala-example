@@ -6,11 +6,6 @@ import java.awt.GraphicsEnvironment
 import java.awt.image.BufferedImage
 import java.awt.RenderingHints
 
-import ru.maxkar.fun.syntax._
-import ru.maxkar.reactive.value._
-
-
-
 
 /**
  * Scaled image buffer. Helps to store scaled image instances in shared

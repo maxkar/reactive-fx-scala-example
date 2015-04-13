@@ -2,6 +2,7 @@ package ru.maxkar.ui
 
 import java.awt.BorderLayout
 import java.awt.FlowLayout
+import java.awt.GridBagLayout
 
 import javax.swing.JComponent
 import javax.swing.JPanel
@@ -46,6 +47,17 @@ object Layouts {
   def leftToRightFlow(components : JComponent*) : JComponent = {
     val res = new JPanel(new FlowLayout(FlowLayout.LEADING))
     components foreach res.add
+    res
+  }
+
+
+
+  /**
+   * Puts an item into a centered position in its container (resulting component).
+   */
+  def centered(component : JComponent) : JComponent = {
+    val res = new JPanel(new GridBagLayout())
+    res add component
     res
   }
 }

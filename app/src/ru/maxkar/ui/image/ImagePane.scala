@@ -1,22 +1,15 @@
 package ru.maxkar.ui.image
 
 import java.awt.Dimension
-import java.awt.Graphics
-import java.awt.Graphics2D
-import java.awt.RenderingHints
-import java.awt.geom.AffineTransform
 import java.awt.image.BufferedImage
-import java.awt.event.ComponentListener
-import java.awt.event.ComponentAdapter
-import java.awt.event.ComponentEvent
 
 import javax.swing.JComponent
 import javax.swing.JScrollPane
-import javax.swing.JPanel
 import javax.swing.ScrollPaneConstants
 
 import ru.maxkar.ui.Scrolls
 import ru.maxkar.ui.Zoom
+import ru.maxkar.ui.Layouts
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
@@ -60,32 +53,17 @@ object ImagePane {
     val zoomFactor = effectiveZoomFor(image) _ ≻ outerBounds ≻ zoom
     val scaler = new ScaleBuffer()
     val scaledState = (scaler.render _).curried(image) ≻ zoomFactor
-    val sizeGoal = preferredSizeFor _ ≻ outerBounds ≻ scaledState
 
     val inner = new RendererComponent()
-    (inner.updateContent _).curried ≻ scaledState ≻ sizeGoal
+    inner.updateContent _ ≻ scaledState
 
-    ui.getViewport.setView(inner)
+    ui.getViewport setView Layouts.centered(inner)
     ui setBorder null
 
     Scrolls.scrollByDrag(ui.getViewport)
 
     new ImagePane(ui, zoomFactor)
   }
-
-
-
-  /**
-   * Calculates an image preferred size for specific image sizes and
-   * scrollpane result.
-   */
-  private def preferredSizeFor(
-        viewportSize : Dimension)(
-        scaledState : (_, Dimension))
-      : Dimension =
-    new Dimension(
-      Math.max(viewportSize.width - 2, scaledState._2.width),
-      Math.max(viewportSize.height - 2, scaledState._2.height))
 
 
 
