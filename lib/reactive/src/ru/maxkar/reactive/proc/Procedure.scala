@@ -108,6 +108,19 @@ object Procedure {
     new Procedure(spec, binder, onCleanup)
 
 
+  /**
+   * Compiles procedure which could be activated manually.
+   */
+  def compileWithActivator(
+        spec : Specification,
+        binder : Binder,
+        onCleanup : () ⇒ Unit = null)
+      : (Activator, Procedure) = {
+    val proc = compile(spec, binder, onCleanup)
+    (new Activator(proc), proc)
+  }
+
+
 
   /**
    * Creates a new action with manual activator.
