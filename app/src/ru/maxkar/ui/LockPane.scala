@@ -15,27 +15,7 @@ import syntax._
  * It is not correct to use this pane in a layered panes. It does not
  * respect focus subsystem to that extent.
  */
-private[ui] class LockPane extends JComponent {
-  import LockPane._
-
-
-  /** Lock rate. */
-  private var rate : Int = 0
-
-
-
-  /** Sets animation time. */
-  private def setAnimTime(time : Int) : Unit = {
-    rate =
-      if (time < GRAYOUT_MS)
-        0
-      else
-        80 * (time - GRAYOUT_MS) / (LOCK_TIME_MS - GRAYOUT_MS)
-    repaint()
-  }
-
-
-
+private[ui] class LockPane(fadeRate : Behaviour[Int])  extends JComponent {
   /** Sets locked state. */
   private def setLocked(locked : Boolean) : Unit = {
     setVisible(locked)
@@ -45,9 +25,8 @@ private[ui] class LockPane extends JComponent {
 
 
 
-
   override def paintComponent(g : Graphics) : Unit = {
-    g.setColor(new Color(128, 128, 128, rate))
+    g.setColor(new Color(128, 128, 128, fadeRate.value))
     g.fillRect(0, 0, getWidth, getHeight)
   }
 }
@@ -66,18 +45,28 @@ private[ui] object LockPane {
   private var GRAYOUT_MS = 100
 
 
+  /** Calculates fade rate. */
+  private def getFadeRate(time : Int) : Int =
+      if (time < GRAYOUT_MS)
+        0
+      else
+        80 * (time - GRAYOUT_MS) / (LOCK_TIME_MS - GRAYOUT_MS)
+
+
+
   /** Creates a "lock UI" pane. */
   private[ui] def create(
         locked : Behaviour[Boolean])(
         implicit ctx : BindContext)
       : JComponent = {
-    val res = new LockPane()
+    val fade = Tween.linear(LOCK_TIME_MS, LOCK_TIME_MS / 14, locked) ≺ getFadeRate
+    val res = new LockPane(fade)
+    fade ≺ (_ ⇒ res.repaint())
     res setOpaque false
     res setFocusable true
     res setFocusCycleRoot true
     res addMouseListener new java.awt.event.MouseAdapter(){}
 
-    Tween.linear(LOCK_TIME_MS, LOCK_TIME_MS / 14, locked) ≺ res.setAnimTime
     /* Swing is not declarative enough, so this workaround.
      * We have to set visibility after component is added into
      * glass pane. */
