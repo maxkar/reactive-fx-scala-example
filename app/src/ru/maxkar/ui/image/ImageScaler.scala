@@ -2,18 +2,23 @@ package ru.maxkar.ui.image
 
 import java.awt.Graphics
 import java.awt.Dimension
+import java.awt.Point
 import java.awt.GraphicsEnvironment
 import java.awt.image.BufferedImage
 import java.awt.RenderingHints
 
+import ru.maxkar.fun.syntax._
+import ru.maxkar.reactive.value._
+
+import ru.maxkar.ui.Zoom
 
 /**
  * Scaled image buffer. Helps to store scaled image instances in shared
  * (growing) image buffer. Optimizes rendering operation and at the same
  * time tries to reduce image footprint.
  */
-private[image] final class ScaleBuffer  {
-  import ScaleBuffer._
+private final class ImageScaler  {
+  import ImageScaler._
 
 
   /** Current image buffer. */
@@ -27,11 +32,14 @@ private[image] final class ScaleBuffer  {
    * Renders an image with the given zoom and returns cached buffer and actual
    * (drawable) buffer dimensions.
    */
-  def render(image : BufferedImage, zoom : Double) : (BufferedImage, Dimension) = {
-    val realDims = targetImageSize(image.getWidth, image.getHeight, zoom)
+  def render(image : BufferedImage, zoom : Option[Double]) : ImageFragment = {
+    if (image == null || zoom.isEmpty)
+      return new ImageFragment(buffer, new Point(0, 0), new Dimension(0, 0))
+
+    val realDims = targetImageSize(image.getWidth, image.getHeight, zoom.get)
     ensureSize(realDims)
     renderScaledImage(image, realDims)
-    (buffer, realDims)
+    new ImageFragment(buffer, new Point(0, 0), realDims)
   }
 
 
@@ -67,14 +75,57 @@ private[image] final class ScaleBuffer  {
 
 
 
-/** Buffer companion object. */
-object ScaleBuffer {
+
+/** Image scaling utilities. */
+private[image] final object ImageScaler {
   /** Image grow factor used as a safety buffer. */
   private var OVERSCAN_FACTOR = 1.3
 
 
   /** Default image/buffer size. */
   private val DEFAULT_IMAGE_SIZE = 1000
+
+
+  /**
+   * Scales an image for the given zoom and destination size.
+   * @param image current image to scale.
+   * @param zoom desired zoom.
+   * @param destSize destination size (for auto zoom).
+   * @return scaled image (as a fragment of other image) and
+   *   actual zoom factor. Actual zoom is none only if image
+   *   value is <code>null</code>.
+   */
+  def scale(
+        image : Behaviour[BufferedImage],
+        zoom : Behaviour[Zoom],
+        destSize : Behaviour[Dimension])(
+        implicit ctx : BindContext)
+      : (Behaviour[ImageFragment], Behaviour[Option[Double]]) = {
+
+    val effectiveZoom = effectiveZoomFor _ ≻ image ≻ destSize ≻ zoom
+    val buffer = new ImageScaler()
+    val img = (buffer.render _).curried ≻ image ≻ effectiveZoom
+    (img, effectiveZoom)
+  }
+
+
+
+  /**
+   * Calculates an effective zoom for the image, selected zoom and actual
+   * viewport size.
+   */
+  private def effectiveZoomFor(
+        image : BufferedImage)(
+        viewportSize : Dimension)(
+        zoom : Zoom)
+      : Option[Double] =
+    if (image == null)
+      None
+    else
+      Some(zoom.scaleFor(
+        image.getWidth, image.getHeight,
+        viewportSize.getWidth, viewportSize.getHeight))
+
 
 
   /** Graphics configuration for default environment. */
@@ -92,4 +143,3 @@ object ScaleBuffer {
       : Dimension =
     new Dimension((width * zoom).ceil.toInt, (height * zoom).ceil.toInt)
 }
-

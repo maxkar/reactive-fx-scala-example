@@ -39,44 +39,25 @@ object ImagePane {
    * @return image behaviour.
    */
   def render(
-        image : BufferedImage,
+        image : Behaviour[BufferedImage],
         zoom : Behaviour[Zoom])(
         implicit ctx : BindContext)
-      : ImagePane = {
+      : (JComponent, Behaviour[Option[Double]]) = {
 
     val ui = new JScrollPane(
       ScrollPaneConstants.VERTICAL_SCROLLBAR_NEVER,
       ScrollPaneConstants.HORIZONTAL_SCROLLBAR_NEVER)
 
     val outerBounds = Scrolls.viewportSize(ui)
+    val (scaledState, zoomFactor) =
+      ImageScaler.scale(image, zoom, outerBounds)
 
-    val zoomFactor = effectiveZoomFor(image) _ ≻ outerBounds ≻ zoom
-    val scaler = new ScaleBuffer()
-    val scaledState = (scaler.render _).curried(image) ≻ zoomFactor
-
-    val inner = new RendererComponent()
-    inner.updateContent _ ≻ scaledState
-
+    val inner = FragmentUI.render(scaledState, const(1.0f))
     ui.getViewport setView Layouts.centered(inner)
     ui setBorder null
 
     Scrolls.scrollByDrag(ui.getViewport)
 
-    new ImagePane(ui, zoomFactor)
+    (ui, zoomFactor)
   }
-
-
-
-  /**
-   * Calculates an effective zoom for the image, selected zoom and actual
-   * viewport size.
-   */
-  private def effectiveZoomFor(
-        image : BufferedImage)(
-        viewportSize : Dimension)(
-        zoom : Zoom)
-      : Double =
-    zoom.scaleFor(
-      image.getWidth, image.getHeight,
-      viewportSize.getWidth, viewportSize.getHeight)
 }

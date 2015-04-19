@@ -65,23 +65,23 @@ class Application(
 
     val zoom = variable[Zoom](Zoom.Fixed(1.0))
 
-    val imageui = ImageLoaderView.autoMake(imgIohandler, file, zoom)
+    val (imageui, effectiveZoom) = ImageLoaderView.autoMake(imgIohandler, file, zoom)
     val zooms = Zoom.SmartFit +: Zoom.Fit +: zoomLevels.map(Zoom.Fixed(_))
 
     val root = Layouts.border(
       center = Controls.hsplit(
         fsRender ~ (250, 300),
-        imageui.ui ~ (500, 300)
+        imageui ~ (500, 300)
       ),
       south = Layouts.leftToRightFlow(
         Controls.label(iohandler.operationCount ≺ (x ⇒ "IO ops: " + x)),
         Controls.combo[Zoom](zooms, zoom, zoom.set),
-        Controls.label(imageui.effectiveZoom ≺ zoomText)
+        Controls.label(effectiveZoom ≺ zoomText)
       ))
 
     root.actions ++=
       FileWalkerView.navActionsFor("navfs:", bro) ++=
-      Zoom.zoomActionsFor("zoom:", zoomLevels, imageui.effectiveZoom, zoom, zoom.set)
+      Zoom.zoomActionsFor("zoom:", zoomLevels, effectiveZoom, zoom, zoom.set)
     root.keysWhenFocusedAncestor ++=
       FileWalkerView.defaultKeyBindings("navfs:") ++=
       Zoom.defaultKeyBindings("zoom:")
