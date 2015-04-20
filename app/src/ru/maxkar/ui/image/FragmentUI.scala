@@ -18,7 +18,7 @@ private[image] final object FragmentUI {
    * @param alpha image display alpha.
    */
   def render(
-        fragment : Behaviour[ImageFragment], alpha : Behaviour[Float])(
+        fragment : Behaviour[ImageFragment], alpha : Behaviour[Double])(
         implicit ctx : BindContext)
       : JComponent = {
 
@@ -38,7 +38,8 @@ private[image] final object FragmentUI {
         val g2 = g.asInstanceOf[Graphics2D]
         val oldComp = g2.getComposite
         if (alpha.value < 1.0)
-          g2 setComposite AlphaComposite.getInstance(AlphaComposite.SRC_OVER, alpha.value)
+          g2 setComposite AlphaComposite.getInstance(
+            AlphaComposite.SRC_OVER, alpha.value.toFloat)
 
         g.drawImage(
           frag.base,

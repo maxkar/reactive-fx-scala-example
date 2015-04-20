@@ -113,7 +113,7 @@ private[ui] final class Linear(
     timer setRepeats true
     timer setCoalesce true
     if (trigger.value)
-      timer.start()
+      activate()
   }
   init()
 

@@ -20,6 +20,10 @@ import ru.maxkar.async._
 object ImageLoaderView {
   import java.io.File
 
+
+  private val FADE_DELAY = 75
+  private val FADE_TIME = 500
+
   /**
    * Convenience method. Creates a new loader and
    * image view.
@@ -31,28 +35,84 @@ object ImageLoaderView {
         implicit ctx : BindContext) :
       (JComponent, Behaviour[Option[Double]]) = {
     val image = simpleAttractor(file, ImageLoader.loadFile, async) : Behaviour[AttractorState[BufferedImage]]
-    val displayImg = image ≺ getDisplayImage
-    val (imgUI, imgZoom) = ImagePane.render(displayImg, zoom)
+    val shouldTween = image ≺ (_ == Updating)
+    val uiTween = Tween.linear(FADE_DELAY + FADE_TIME, 25, shouldTween)
 
-    val ui = Controls contentOf (image ≺ (img ⇒
-      img match {
-        case Updating  | Success(null) ⇒ new JPanel()
-        case Success(x) ⇒ imgUI
-        case Failure(e) ⇒
-          val msg = Exceptions.fullException(e)
-          val ta = new JTextArea(msg)
-          ta setEditable false
-          ta
-      }))
-
-    val effectiveZoom : Behaviour[Option[Double]] = image ≼ (img ⇒
-      img match {
-        case Success(x) ⇒ imgZoom
-        case _ ⇒ const(None)
-      })
+    val internalState = mkInternalState(image, uiTween)
+    val displayImg = internalState ≺ getDisplayImage
+    val (imgUI, imgZoom) = ImagePane.render(displayImg, zoom, fadeAmount _ ≻ uiTween)
+    val ui = Controls.contentOf(stateUI(imgUI) _ ≻ internalState)
+    val effectiveZoom = selectZoom(imgZoom) _ ≽ internalState
 
     (ui, effectiveZoom)
   }
+
+
+
+  /** Selects a zoom behaviour. */
+  private def selectZoom(
+        default : Behaviour[Option[Double]])(
+        state : AttractorState[BufferedImage])
+      : Behaviour[Option[Double]] =
+    state match {
+      case Success(_) ⇒ default
+      case _ ⇒ const(None)
+    }
+
+
+
+  /** Returns UI for the state.
+   * @param imgUI image display UI.
+   * @param state current UI state.
+   * @return UI to use for the state.
+   */
+  private def stateUI(
+        imgUI : JComponent)(
+        state : AttractorState[BufferedImage])
+      : JComponent =
+    state match {
+      case Updating | Success(null) ⇒ new JPanel()
+      case Success(_) ⇒ imgUI
+      case Failure(e) ⇒
+        val msg = Exceptions.fullException(e)
+        val ta = new JTextArea(msg)
+        ta setEditable false
+        ta
+    }
+
+
+
+
+  /** Calculates a fade amount. */
+  private def fadeAmount(x : Int) : Double =
+    if (x < FADE_DELAY)
+      1
+    else
+      (FADE_TIME - (x - FADE_DELAY)) / FADE_TIME.toDouble
+
+
+
+  /** Creates an internal state for the display image. */
+  private def mkInternalState(
+        state : Behaviour[AttractorState[BufferedImage]],
+        tween : Behaviour[Int])(
+        implicit ctx : BindContext)
+      : Behaviour[AttractorState[BufferedImage]] = {
+    var lastImg : BufferedImage = null
+    def update(st : AttractorState[BufferedImage])(tween : Int)
+        : AttractorState[BufferedImage] =
+      st match {
+        case Success(x) ⇒
+          lastImg = x
+          st
+        case Updating ⇒
+          if (tween < FADE_DELAY + FADE_TIME) Success(lastImg) else Updating
+        case x ⇒ x
+      }
+
+    update _ ≻ state ≻ tween
+  }
+
 
 
   /** Returns an image to display. */
@@ -61,5 +121,4 @@ object ImageLoaderView {
       case Success(x) ⇒ x
       case _ ⇒ null
     }
-
 }

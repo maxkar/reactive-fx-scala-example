@@ -14,17 +14,6 @@ import ru.maxkar.ui.Layouts
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
 
-/**
- * Pane used to display one (and only one) image.
- * @param image image to display.
- * @param zoom zoom model.
- * @param lifespan image/binding lifespan.
- */
-final class ImagePane(
-      val ui : JComponent,
-      val effectiveZoom : Behaviour[Double])
-
-
 
 /**
  * Image object companion.
@@ -35,12 +24,14 @@ object ImagePane {
    * component).
    * @param image image to display.
    * @param zoom current (desizer) zoom.
+   * @param opacity image opacity.
    * @param ctx value binding context.
    * @return image behaviour.
    */
   def render(
         image : Behaviour[BufferedImage],
-        zoom : Behaviour[Zoom])(
+        zoom : Behaviour[Zoom],
+        opacity : Behaviour[Double])(
         implicit ctx : BindContext)
       : (JComponent, Behaviour[Option[Double]]) = {
 
@@ -52,7 +43,7 @@ object ImagePane {
     val (scaledState, zoomFactor) =
       ImageScaler.scale(image, zoom, outerBounds)
 
-    val inner = FragmentUI.render(scaledState, const(1.0f))
+    val inner = FragmentUI.render(scaledState, opacity)
     ui.getViewport setView Layouts.centered(inner)
     ui setBorder null
 
