@@ -4,6 +4,7 @@ import java.awt.BorderLayout
 import java.awt.FlowLayout
 import java.awt.GridBagLayout
 
+import javax.swing.BoxLayout
 import javax.swing.JComponent
 import javax.swing.JPanel
 
@@ -46,6 +47,19 @@ object Layouts {
    */
   def leftToRightFlow(components : JComponent*) : JComponent = {
     val res = new JPanel(new FlowLayout(FlowLayout.LEADING))
+    components foreach res.add
+    res
+  }
+
+
+
+  /**
+   * Creates simple top-to-bottom flow layout.
+   */
+  def vstackLeft(components : JComponent*) : JComponent = {
+    val res = new JPanel()
+    res setLayout new BoxLayout(res, BoxLayout.PAGE_AXIS)
+    components.foreach(x ⇒ x.setAlignmentX(0f))
     components foreach res.add
     res
   }

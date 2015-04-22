@@ -13,11 +13,14 @@ import javax.swing.JComboBox
 import javax.swing.JLabel
 import javax.swing.JPanel
 import javax.swing.JSplitPane
+import javax.swing.JTextField
+import javax.swing.ListCellRenderer
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
 
 import scala.reflect.ClassTag
+
 
 /**
  * Simple controls factory.
@@ -132,4 +135,35 @@ object Controls {
         implicit ctx : BindContext)
       : JComponent =
     LockPane.create(locked)
+
+
+
+  /**
+   * Creates a list component.
+   * @param items list items.
+   * @param selectedItem selection model.
+   * @param selector element to use when list item is selected.
+   * @param renderer list item renderer.
+   * @return Dynamic list ui.
+   */
+  def list[T <: AnyRef : ClassTag](
+        items : Behaviour[Seq[T]],
+        selectedItem : Behaviour[T],
+        selector : T ⇒ Unit,
+        renderer : ListCellRenderer[T])(
+        implicit ctx : BindContext)
+      : JComponent =
+    ListUI.list(items, selectedItem, selector, renderer)
+
+
+
+  /**
+   * Creates a new text input using behaviour and change callback.
+   */
+  def input(
+        value : Behaviour[String],
+        cb : String ⇒ Unit)(
+        implicit ctx : BindContext)
+      : JTextField =
+    InputUI.input(value, cb)
 }
