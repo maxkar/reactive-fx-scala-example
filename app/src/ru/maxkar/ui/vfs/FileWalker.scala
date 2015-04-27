@@ -52,7 +52,7 @@ final class FileWalker private(
    * entity.
    */
   def select(entity : FileInfo) : Unit =
-    if (!inOp && allEntitiesV.value.contains(entity))
+    if (!inOp && (allEntitiesV.value.contains(entity) || entity == null))
       selectionV.set(entity)
 
 

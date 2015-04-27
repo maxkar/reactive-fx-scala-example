@@ -15,6 +15,7 @@ import ru.maxkar.reactive.value._
 
 import scala.reflect.ClassTag
 
+import ru.maxkar.ui.syntax._
 
 
 /** List UI factory. */
@@ -33,7 +34,7 @@ private[ui] final object ListUI {
         selector : T ⇒ Unit,
         renderer : ListCellRenderer[T])(
         implicit ctx : BindContext)
-      : JComponent = {
+      : (JComponent, ListActions) = {
     val list = new JList[T](items.value.toArray)
 
     var updating = false
@@ -64,44 +65,6 @@ private[ui] final object ListUI {
     }
 
 
-
-    def pageUpIdx() : Int = {
-      val idx = list.getSelectedIndex()
-      if (idx < 0)
-        return -1
-
-      val lbnd = list.getFirstVisibleIndex()
-      if (lbnd == 0 && idx <= list.getLastVisibleIndex())
-        return 0
-
-      val rbnd = list.getLastVisibleIndex()
-      return Math.max(0, idx - (rbnd - lbnd - 1))
-    }
-
-
-
-    def pageDnIdx() : Int = {
-      val idx = list.getSelectedIndex()
-      if (idx < 0)
-        return -1
-
-
-      val lim = items.value.length - 1
-      val rbnd = list.getLastVisibleIndex()
-      if (rbnd == lim && idx >= list.getFirstVisibleIndex())
-        return lim
-
-      val lbnd = list.getFirstVisibleIndex()
-      return Math.min(lim, idx + (rbnd - lbnd - 1))
-    }
-
-
-
-    def pageNav(idx : Int) : Unit =
-      selector(items.value()(idx))
-
-
-
     (syncModels _).curried ≻ items ≻ selectedItem
     if (selectedItem.value != null)
       list.setSelectedValue(selectedItem.value, true)
@@ -120,22 +83,24 @@ private[ui] final object ListUI {
       }
     }
 
+    val actions = new ListActionsImpl(items, selectedItem, selector, list)
+
 
     list addKeyListener new KeyAdapter() {
       override def keyPressed(e : KeyEvent) {
         if (e.getModifiers == 0)
           e.getKeyCode match {
             case KeyEvent.VK_PAGE_DOWN ⇒
-              pageNav(pageDnIdx())
+              actions.pageDown()
               e.consume()
             case KeyEvent.VK_PAGE_UP ⇒
-              pageNav(pageUpIdx())
+              actions.pageUp()
               e.consume()
             case _ ⇒ ()
           }
       }
     }
 
-    list
+    (list, actions)
   }
 }

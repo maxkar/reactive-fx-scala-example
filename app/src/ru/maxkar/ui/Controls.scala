@@ -152,7 +152,7 @@ object Controls {
         selector : T ⇒ Unit,
         renderer : ListCellRenderer[T])(
         implicit ctx : BindContext)
-      : JComponent =
+      : (JComponent, ListActions) =
     ListUI.list(items, selectedItem, selector, renderer)
 
 
