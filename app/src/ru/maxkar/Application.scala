@@ -47,7 +47,7 @@ class Application(
     val imgIohandler = new CountingExecutor(SwingUtilities.invokeLater, iohandler)
 
     val curFile = variable[DirectoryEntry](null)
-    val fsRender =
+    val (fsRender, validSelection) =
       FileWalkerView.make(bro,
         fsRenderer._1, fsRenderer._2, fsRenderer._3, fsRenderer._4)
 
@@ -80,7 +80,7 @@ class Application(
       ))
 
     root.actions ++=
-      FileWalkerView.navActionsFor("navfs:", bro) ++=
+      FileWalkerView.navActionsFor("navfs:", validSelection, bro) ++=
       Zoom.zoomActionsFor("zoom:", zoomLevels, effectiveZoom, zoom, zoom.set)
     root.keysWhenFocusedAncestor ++=
       FileWalkerView.defaultKeyBindings("navfs:") ++=

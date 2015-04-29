@@ -18,9 +18,7 @@ import javax.swing.DefaultListCellRenderer
 import javax.swing.ListCellRenderer
 import javax.swing.ImageIcon
 import javax.swing.PopupFactory
-
-import javax.swing.event.ListSelectionListener
-import javax.swing.event.ListSelectionEvent
+import javax.swing.Popup
 
 import ru.maxkar.fun.syntax._
 import ru.maxkar.reactive.value._
@@ -50,6 +48,7 @@ object FileWalkerView {
   /**
    * Creates a new entry list reader with the specified
    * directory icons.
+   * @return ui component and "have valid selection" state.
    */
   def make(
         walker : FileWalker,
@@ -58,7 +57,7 @@ object FileWalkerView {
         imageIcon : BufferedImage = null,
         imageUnknown : BufferedImage = null)(
         implicit ctx : BindContext)
-      : JComponent = {
+      : (JComponent, Behaviour[Boolean]) = {
 
     val baseCellRenderer = new DefaultListCellRenderer()
     val cellRenderer = new ListCellRenderer[FileInfo] {
@@ -84,113 +83,137 @@ object FileWalkerView {
         }
     }
 
+    val filter = FilterInput.create
+    val filteredItems = filterItems _ ≻ filter.filterFn ≻ walker.items
 
-    val filter = variable("")
-    val showFilter = variable(false)
-    val filterUI = mkFilterUI(filter, filter.set, walker)
-    val filteredItems = filterItems _ ≻ filter.behaviour ≻ walker.items
+    val qnav = QuickNav.create(filteredItems)
+    var qnavPopup : Popup = null
+    def hideQNav() : Unit =
+      if (qnavPopup != null) {
+        qnav.deactivate()
+        qnavPopup.hide()
+        qnavPopup = null
+      }
 
-    val (list, listActions) = Controls.list(filteredItems, walker.selection, walker.select, cellRenderer)
+    val visSelector = getUISelection _ ≻
+      walker.selection ≻ filter.filterFn ≻
+      qnav.effective ≻ qnav.selectedItem
+
+    val canNav = visSelector ≺ (x ⇒ x != null)
+
+    val (list, listActions) = Controls.list(filteredItems, visSelector, walker.select, cellRenderer)
     val res = new JScrollPane(list)
 
-    filterUI.actions ++= Seq(
+    /* Filter Actions. */
+    filter.ui.actions ++= Seq(
       "pgup" :-> listActions.pageUp(),
       "pgdn" :-> listActions.pageDown(),
       "next" :-> listActions.nextItem(),
       "prev" :-> listActions.prevItem(),
       "open" :-> Activator.batch {
-        walker.open()
-        filter set ""
-        showFilter set false
+        walker.openItem(visSelector.value)
+        filter.disable()
       },
-      "hide" :-> Activator.batch {
-        filter set ""
-        showFilter set false
-      })
+      "back" :-> walker.openItem(FileInfo.ParentDirectory),
+      "hide" :-> filter.disable()
+    )
 
-    filterUI.keysWhenFocusedAncestor ++= Seq(
+    filter.ui.keysWhenFocusedAncestor ++= Seq(
       "UP" → "prev",
       "DOWN" → "next",
       "PAGE_UP" → "pgup",
       "PAGE_DOWN" → "pgdn",
       "ENTER" → "open",
-      "ESCAPE" → "hide")
+      "ESCAPE" → "hide",
+      "alt LEFT" → "back",
+      "alt RIGHT" → "open")
 
+
+    /* Qnav actions. */
+    qnav.ui.actions ++= Seq(
+      "approve" :-> Activator.batch {
+        if (qnav.selectedItem.value != null)
+          walker.select(qnav.selectedItem.value)
+        hideQNav()
+      },
+      "open" :-> Activator.batch {
+        walker.openItem(qnav.selectedItem.value)
+        hideQNav()
+      },
+      "approve_next" :-> Activator.batch {
+        selectWithOffset(walker, qnav.selectedItem.value, 1)
+        hideQNav()
+      },
+      "approve_prev" :-> Activator.batch {
+        selectWithOffset(walker, qnav.selectedItem.value, -1)
+        hideQNav()
+      },
+      "cancel" :-> hideQNav())
+
+    qnav.ui.keysWhenFocusedAncestor ++= Seq(
+      "ENTER" → "open",
+      "ESCAPE" → "cancel",
+      "UP" → "approve_prev",
+      "DOWN" → "approve_next",
+      "ctrl ENTER" → "approve")
+
+    qnav.ui addFocusListener new FocusAdapter() {
+      override def focusLost(e : FocusEvent) : Unit = hideQNav
+    }
+
+
+    /* List/result actions. */
+    val ppf = PopupFactory.getSharedInstance()
     res.actions ++= Seq(
-      "quickselect" :->
-        quickSelect(filteredItems, walker.selection, walker.select, res, walker.open),
-      "enable_filter" :-> {
-        showFilter set true
-        filterUI.requestFocusInWindow()
-      })
+      "quickselect" :-> {
+        val loc = res.getLocationOnScreen()
+        qnavPopup = ppf.getPopup(res, qnav.ui, loc.x, loc.y + res.getHeight)
+        qnavPopup.show()
+        qnav.activate()
+      },
+      "enable_filter" :-> filter.enable)
     res.keysWhenFocusedAncestor ++= Seq(
       "SLASH" → "quickselect",
       "ctrl F" → "enable_filter")
 
-    mkUI(
-      Controls.contentOf(showFilter.behaviour ≺ (x ⇒ if (x) filterUI else null)),
-      res)
+    (mkUI(filter.ui, res), canNav)
   }
 
 
-
-  /** Creates a filter model and filter input UI. */
-  private def mkFilterUI(
-        filterValue : Behaviour[String],
-        selector : String ⇒ Unit,
-        walker : FileWalker)(
-        implicit ctx : BindContext)
-      : JComponent = {
-    var lastValue = walker.selection.value
-
-    Controls.input(filterValue, x ⇒ Activator.batch {
-      val curSel = walker.selection.value
-      if (curSel != null)
-        if (filterMatches(x, curSel))
-          lastValue = curSel
-        else
-          walker.select(null)
-      else
-        if (filterMatches(x, lastValue))
-          walker.select(lastValue)
-
-      selector(x)
-    })
-  }
+  /** Calculates UI item to highlight. */
+  private def getUISelection(
+        base : FileInfo)(filter : FileInfo ⇒ Boolean)(
+        qselActive : Boolean)(qselItem : FileInfo)
+      : FileInfo =
+    if (qselActive && qselItem != null)
+      qselItem
+    else if (filter(base))
+      base
+    else
+      null
 
 
 
   /** Filters items in the list. */
-  private def filterItems(filter : String)(items : Seq[FileInfo]) : Seq[FileInfo] =
-    if (filter == "")
-      items
-    else
-      items.filter(x ⇒ filterMatches(filter, x))
-
-
-
-  /** Checks if file matches filter data. */
-  private def filterMatches(filter : String, item : FileInfo) : Boolean =
-    item.name.indexOf(filter) >= 0
+  private def filterItems(filterFn : FileInfo ⇒ Boolean)(items : Seq[FileInfo]) : Seq[FileInfo] =
+      items.filter(filterFn)
 
 
 
   /** Selects an item with the specific offest from the current item. */
   private def selectWithOffset(
-        items : Behaviour[Seq[FileInfo]],
-        selection : Behaviour[FileInfo],
-        selector : FileInfo ⇒ Unit,
+        walker : FileWalker,
+        selection : FileInfo,
         offset : Int) : Unit = {
-    val v = selection.value()
-    if (v == null)
+    if (selection == null)
       return
-    val witems = items.value()
-    val cidx = witems.indexOf(v)
+    val witems = walker.items.value()
+    val cidx = witems.indexOf(selection)
     if (cidx < 0)
       return
     val newIdx = cidx + offset
     if (0 <= newIdx && newIdx < witems.length )
-      selector(witems(newIdx))
+      walker.select(witems(newIdx))
   }
 
 
@@ -218,82 +241,6 @@ object FileWalkerView {
   }
 
 
-  /** Shows a quick select popup and performs a selection. */
-  private def quickSelect(
-        items : Behaviour[Seq[FileInfo]],
-        selection : Behaviour[FileInfo],
-        selector : FileInfo ⇒ Unit,
-        parent : JComponent,
-        acceptor : () ⇒ Unit)
-      : Unit = {
-    implicit val ctx = permanentBind
-
-    val initialSelect = selection.value()
-    val valid = variable(true)
-
-    val filter = variable("")
-    val res = Controls.input(filter, nv ⇒ Activator.batch {
-      filter set nv
-
-      if (nv == "")
-        valid set true
-      else
-        items.value().find(x ⇒ x.name.startsWith(nv)) match {
-          case None ⇒ valid set false
-          case Some(x) ⇒
-            selector(x)
-            valid set true
-        }
-    })
-
-    val defaultColor = res.getBackground()
-    val itemColor = valid.behaviour ≺ (v ⇒ if (v) defaultColor else java.awt.Color.PINK)
-    itemColor ≺ res.setBackground
-
-    res setColumns 10
-
-    val loc = parent.getLocationOnScreen()
-    val ppf = PopupFactory.getSharedInstance()
-    val popup = ppf.getPopup(parent, res, loc.x, loc.y + parent.getHeight)
-    popup.show()
-    res.requestFocus()
-
-    res addFocusListener new FocusAdapter() {
-      override def focusLost(e : FocusEvent) : Unit =
-        popup.hide()
-    }
-
-    res.actions ++= Seq(
-      "approve" :-> popup.hide(),
-      "open" :-> {
-        popup.hide()
-        if (selection.value() != null)
-          acceptor()
-      },
-      "approve_next" :-> {
-        popup.hide()
-        selectWithOffset(items, selection, selector, 1)
-      },
-      "approve_prev" :-> {
-        popup.hide()
-        selectWithOffset(items, selection, selector, -1)
-      },
-      "cancel" :-> {
-        popup.hide()
-        if (initialSelect != null)
-          selector(initialSelect)
-      })
-
-    res.keysWhenFocusedAncestor ++= Seq(
-      "ENTER" → "open",
-      "ESCAPE" → "cancel",
-      "UP" → "approve_prev",
-      "DOWN" → "approve_next",
-      "ctrl ENTER" → "approve")
-  }
-
-
-
 
   /**
    * Returns navigation actions for the specific file walker.
@@ -303,15 +250,13 @@ object FileWalkerView {
    * </ul>
    * @param prefix action name prefix.
    */
-  def navActionsFor(prefix : String, w : FileWalker) : Seq[ActionSpec] =
+  def navActionsFor(prefix : String, couldNav : Behaviour[Boolean], w : FileWalker) : Seq[ActionSpec] =
     Seq(
-      prefix + "open" :-> w.open,
-      prefix + "up" :-> {
-        if (w.items.value.contains(FileInfo.ParentDirectory)) {
-          w.select(FileInfo.ParentDirectory)
-          w.open()
-        }
-      }
+      prefix + "open" :-> {
+        if (couldNav.value)
+          w.open
+      },
+      prefix + "up" :-> w.openItem(FileInfo.ParentDirectory)
     )
 
 

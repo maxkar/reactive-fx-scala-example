@@ -58,11 +58,15 @@ final class FileWalker private(
 
 
   /** Opens current selection and navigates inside it. */
-  def open() : Unit = {
-    val item = selection.value
-    if (inOp || item == null)
-      return
+  def open() : Unit =
+    openItem(selection.value)
 
+
+
+  /** Opens a random item. */
+  def openItem(item : FileInfo) : Unit = {
+    if (inOp || item == null || !allEntitiesV.value.contains(item))
+      return
     val ename = curDirectoryV.value.dirName
     val res = async {
       item match {
