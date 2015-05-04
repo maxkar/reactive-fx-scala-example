@@ -104,6 +104,8 @@ object FileWalkerView {
     val (list, listActions) = Controls.list(filteredItems, visSelector, walker.select, cellRenderer)
     val res = new JScrollPane(list)
 
+    val sorter = sort.SortUI.make(walker)
+
     /* Filter Actions. */
     filter.ui.actions ++= Seq(
       "pgup" :-> listActions.pageUp(),
@@ -171,12 +173,14 @@ object FileWalkerView {
         qnavPopup.show()
         qnav.activate()
       },
-      "enable_filter" :-> filter.enable)
+      "enable_filter" :-> filter.enable,
+      "toggle_sort" :-> sorter.toggle)
     res.keysWhenFocusedAncestor ++= Seq(
       "SLASH" → "quickselect",
-      "ctrl F" → "enable_filter")
+      "ctrl F" → "enable_filter",
+      "ctrl S" → "toggle_sort")
 
-    (mkUI(filter.ui, res), canNav)
+    (mkUI(sorter.ui, filter.ui, res), canNav)
   }
 
 
@@ -219,7 +223,7 @@ object FileWalkerView {
 
 
   /** Creates vertical component list. */
-  private def mkUI(filter : JComponent, body : JComponent) : JComponent = {
+  private def mkUI(sorter : JComponent, filter : JComponent, body : JComponent) : JComponent = {
     val res = new JPanel()
     res.setLayout(new GridBagLayout())
 
@@ -231,6 +235,8 @@ object FileWalkerView {
     gbc.fill = GridBagConstraints.HORIZONTAL
     gbc.anchor = GridBagConstraints.NORTH
 
+    res.add(sorter, gbc)
+    gbc.gridy += 1
     res.add(filter, gbc)
     gbc.gridy += 1
     gbc.weighty = 1

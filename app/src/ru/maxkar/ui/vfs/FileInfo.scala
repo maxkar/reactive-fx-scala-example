@@ -2,6 +2,8 @@ package ru.maxkar.ui.vfs
 
 import ru.maxkar.util.vfs._
 
+import sort.Numtoken
+
 /**
  * Information about one file in the file view.
  */
@@ -11,6 +13,10 @@ abstract sealed class FileInfo private[vfs]() {
 
   /** File type. */
   val fileType : FileType
+
+
+  /** Numeric sorting vector. */
+  val nsvector : Seq[Numtoken]
 }
 
 
@@ -23,6 +29,7 @@ object FileInfo {
   case object ParentDirectory extends FileInfo {
     override val name = ".."
     override val fileType = FileType.ParentDirectory
+    override val nsvector = Numtoken.parse(name)
   }
 
 
@@ -32,7 +39,8 @@ object FileInfo {
    */
   case class NestedItem(fileType : FileType, peer : DirectoryEntry)
       extends FileInfo {
-    val name = peer.name
+    override val name = peer.name
+    override val nsvector = Numtoken.parse(name)
   }
 
 

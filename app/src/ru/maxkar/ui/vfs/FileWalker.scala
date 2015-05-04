@@ -8,6 +8,8 @@ import ru.maxkar.reactive.value._
 
 import ru.maxkar.util.vfs._
 
+import sort._
+
 /**
  * Filesystem walker model. Walks through file system
  * in the "UI-friendly" manner.
@@ -31,9 +33,16 @@ final class FileWalker private(
   /** Current directory view model. */
   private val curDirectoryV = variable(baseDirectory)
 
-  /** Items in this file walker, these items are available for the UI. */
-  val items = allEntitiesV.behaviour ≺ (ents ⇒ ents.toSeq.sortWith(isBefore))
+  /** Sorting order variable. */
+  private val sortingV = variable[SortSpec](SortNumCS)
 
+
+  /** Selecterd sorting mode. */
+  val sorting = sortingV.behaviour
+
+
+  /** Items in this file walker, these items are available for the UI. */
+  val items = sort _ ≻ allEntitiesV.behaviour ≻ sorting
 
 
   /** Focused (selected) entity. */
@@ -54,6 +63,14 @@ final class FileWalker private(
   def select(entity : FileInfo) : Unit =
     if (!inOp && (allEntitiesV.value.contains(entity) || entity == null))
       selectionV.set(entity)
+
+
+
+  /**
+   * Sets a new sorting order.
+   */
+  def sortBy(sort : SortSpec) : Unit =
+    sortingV set sort
 
 
 
@@ -134,23 +151,10 @@ final class FileWalker private(
  */
 object FileWalker {
 
-  /** Provides relative type ordering. */
-  private def typeOrd(t : FileType) : Int =
-    t match {
-      case FileType.ParentDirectory ⇒ 1
-      case FileType.Directory ⇒ 2
-      case _ ⇒ 3
-    }
 
-
-
-  /** Entity sort order. */
-  private def isBefore(e1 : FileInfo, e2 : FileInfo) : Boolean = {
-    val typeVal = Integer.compare(typeOrd(e1.fileType), typeOrd(e2.fileType))
-    if (typeVal != 0)
-      return typeVal < 0
-    return e1.name.compareTo(e2.name) < 0
-  }
+  /** Sorts items according to a sort spec. */
+  private def sort(items : Set[FileInfo])(ord : SortSpec) : Seq[FileInfo] =
+    items.toSeq.sortWith((a, b) ⇒ ord.compare(a, b) < 0)
 
 
 
