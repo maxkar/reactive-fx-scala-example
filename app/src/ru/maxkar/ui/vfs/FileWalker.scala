@@ -88,11 +88,11 @@ final class FileWalker private(
   def openItem(item : FileInfo) : Unit = {
     if (stateV.value != Ready || item == null || !allEntitiesV.value.contains(item))
       return
-    val res = navTo(item)
+    val res = navTo(curDirectoryV.value, item)
     if (res == null)
       return
 
-    stateV.set(SyncNav)
+    stateV.set(Nav)
     res.onComplete(v ⇒ stateV.set(Ready))
     res.onSuccess(v ⇒ Activator.batch {
       allEntitiesV.set(v._1)
@@ -102,17 +102,94 @@ final class FileWalker private(
   }
 
 
+
+  /** Navigates to a sibling folder. */
+  def siblingNavNext() : Unit = {
+    if (stateV.value != Ready || selection.value == null)
+      return
+    if (!allEntitiesV.value.contains(FileInfo.ParentDirectory))
+      return
+
+    val res = navTo(curDirectoryV.value, FileInfo.ParentDirectory)
+    if (res == null)
+      return
+
+    stateV.set(CrossNav)
+    res.onFailure(v ⇒ stateV.set(Ready))
+    res.onSuccess(initXNavInDir)
+  }
+
+
+
+  /** Cross-navigates to a next displayable item (possible in another directory). */
+  def crossNavNext() : Unit = {
+    if (stateV.value != Ready || selection.value == null)
+      return
+
+    getNextXNav(items.value, selection.value) match {
+      case null ⇒ return
+      case a@FileInfo.NestedItem(FileType.Image, _) ⇒
+        selectionV.set(a)
+      case cnt ⇒
+        val res = navTo(curDirectoryV.value, cnt)
+        if (res == null)
+          return
+        stateV.set(CrossNav)
+        res.onFailure(v ⇒ stateV.set(Ready))
+        res.onSuccess(initXNavInDir)
+    }
+  }
+
+
+
+  /** Initializes a cross-nav in the new directory. */
+  private def initXNavInDir(info : (Set[FileInfo], DirectoryView, FileInfo)) : Unit =
+    Activator.batch {
+      allEntitiesV.set(info._1)
+      curDirectoryV.set(info._2)
+      selectionV.set(info._3)
+
+      val fullOrder = sort(info._1)(sorting.value)
+      getNextXNav(fullOrder, info._3) match {
+        case null ⇒ ()
+        case a@FileInfo.NestedItem(FileType.Image, _) ⇒
+          selectionV.set(a)
+          stateV.set(Ready)
+        case cnt ⇒
+          val res = navTo(info._2, cnt)
+          if (res == null) {
+            stateV.set(Ready)
+          } else {
+            res.onFailure(v ⇒ stateV.set(Ready))
+            res.onSuccess(initXNavInDir)
+          }
+      }
+    }
+
+
+
+  /**
+   * Finds a next cross-nav item from list of candidates.
+   */
+  private def getNextXNav(items : Seq[FileInfo], cur : FileInfo) : FileInfo = {
+    val rest = items.dropWhile(item ⇒ item != cur).tail
+    rest.find(isXNavigable).getOrElse(
+      if (items.contains(FileInfo.ParentDirectory)) FileInfo.ParentDirectory else null)
+  }
+
+
+
   /**
    * Navigates into the subriderctory and returs list of items and current
    * item in that directory.
    */
-  private def navTo(item : FileInfo) : Promise[(Set[FileInfo], DirectoryView, FileInfo)] = {
+  private def navTo(curDir : DirectoryView, item : FileInfo) : Promise[(Set[FileInfo], DirectoryView, FileInfo)] = {
     item match {
       case FileInfo.ParentDirectory ⇒
         async {
-          val ename = curDirectoryV.value.dirName
-          val p = curDirectoryV.value.getParent()
-          curDirectoryV.value.close()
+          val ename = curDir.dirName
+          val p = curDir.getParent()
+          curDir.close()
           val (files, view) = loadContent(p)
           (files, view, files.find(x ⇒ x.name == ename).getOrElse(null))
         }
@@ -165,7 +242,9 @@ object FileWalker {
   /** File walker is ready and could accept next action. */
   case object Ready extends State
   /** Synchronous navigation is active. */
-  case object SyncNav extends State
+  case object Nav extends State
+  /** Cross-navigation. */
+  case object CrossNav extends State
   /** Walker is closing. */
   case object Closing extends State
 
@@ -186,6 +265,17 @@ object FileWalker {
         filel
     (allEntities.toSet, dir)
   }
+
+
+
+  /** Checks if file info is eligible for cross-navigation. */
+  private def isXNavigable(item : FileInfo) : Boolean =
+    item match {
+      case FileInfo.NestedItem(FileType.Image, _) ⇒ true
+      case FileInfo.NestedItem(FileType.Container, _) ⇒ true
+      case FileInfo.NestedItem(FileType.Directory, _) ⇒ true
+      case _ ⇒ false
+    }
 
 
 

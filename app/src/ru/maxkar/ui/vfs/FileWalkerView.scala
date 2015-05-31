@@ -40,7 +40,9 @@ object FileWalkerView {
    */
   private val DEFAULT_ACTION_MAP = Seq(
     "ENTER" → "open",
-    "BACK_SPACE" → "up"
+    "BACK_SPACE" → "up",
+    "CONTEXT_MENU" → "crossnav",
+    "ctrl CONTEXT_MENU" → "siblingnav"
   )
 
 
@@ -262,7 +264,9 @@ object FileWalkerView {
         if (couldNav.value)
           w.open
       },
-      prefix + "up" :-> w.openItem(FileInfo.ParentDirectory)
+      prefix + "up" :-> w.openItem(FileInfo.ParentDirectory),
+      prefix + "crossnav" :-> w.crossNavNext(),
+      prefix + "siblingnav" :-> w.siblingNavNext()
     )
 
 
