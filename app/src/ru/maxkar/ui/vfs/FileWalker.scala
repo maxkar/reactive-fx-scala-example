@@ -23,9 +23,8 @@ final class FileWalker private(
   import FileWalker._
   private implicit val ctx = permanentBind
 
-
-  /** Flag indicating that this walker is in active operation. */
-  private var inOp = false
+  /** Current state of the walker. */
+  private var stateV = variable[State](Ready)
 
   /** All entities in the current directory. */
   private val allEntitiesV = variable[Set[FileInfo]](baseEntities)
@@ -37,9 +36,11 @@ final class FileWalker private(
   private val sortingV = variable[SortSpec](SortNumCS)
 
 
+  /** Current (read-only) state of the file walker. */
+  var state = stateV.behaviour
+
   /** Selecterd sorting mode. */
   val sorting = sortingV.behaviour
-
 
   /** Items in this file walker, these items are available for the UI. */
   val items = sort _ ≻ allEntitiesV.behaviour ≻ sorting
@@ -60,9 +61,12 @@ final class FileWalker private(
    * navigation actions during this operation but changes active
    * entity.
    */
-  def select(entity : FileInfo) : Unit =
-    if (!inOp && (allEntitiesV.value.contains(entity) || entity == null))
+  def select(entity : FileInfo) : Unit = {
+    if (stateV.value != Ready)
+      return
+    if (allEntitiesV.value.contains(entity) || entity == null)
       selectionV.set(entity)
+  }
 
 
 
@@ -82,38 +86,43 @@ final class FileWalker private(
 
   /** Opens a random item. */
   def openItem(item : FileInfo) : Unit = {
-    if (inOp || item == null || !allEntitiesV.value.contains(item))
+    if (stateV.value != Ready || item == null || !allEntitiesV.value.contains(item))
       return
-    val ename = curDirectoryV.value.dirName
-    val res = async {
-      item match {
-        case FileInfo.ParentDirectory ⇒
+    val res = navTo(item)
+    if (res == null)
+      return
+
+    stateV.set(SyncNav)
+    res.onComplete(v ⇒ stateV.set(Ready))
+    res.onSuccess(v ⇒ Activator.batch {
+      allEntitiesV.set(v._1)
+      curDirectoryV.set(v._2)
+      selectionV.set(v._3)
+    })
+  }
+
+
+  /**
+   * Navigates into the subriderctory and returs list of items and current
+   * item in that directory.
+   */
+  private def navTo(item : FileInfo) : Promise[(Set[FileInfo], DirectoryView, FileInfo)] = {
+    item match {
+      case FileInfo.ParentDirectory ⇒
+        async {
+          val ename = curDirectoryV.value.dirName
           val p = curDirectoryV.value.getParent()
           curDirectoryV.value.close()
-          loadContent(p)
-        case FileInfo.NestedItem(_, e) ⇒
-          if (!e.container)
-            null
-          else {
-            loadContent(e.open())
-          }
-      }
-    }
-
-    res.onComplete(v ⇒ inOp = false)
-    res.onSuccess(v ⇒ {
-      if (v != null)
-        Activator.batch {
-          allEntitiesV.set(v._1)
-          val nd =
-            if (item != FileInfo.ParentDirectory)
-              FileInfo.ParentDirectory
-            else
-              v._1.find(x ⇒ x.name == ename).getOrElse(null)
-          selectionV.set(nd)
-          curDirectoryV.set(v._2)
+          val (files, view) = loadContent(p)
+          (files, view, files.find(x ⇒ x.name == ename).getOrElse(null))
         }
-    })
+      case FileInfo.NestedItem(_, e) if !e.container ⇒ null
+      case FileInfo.NestedItem(_, e) ⇒
+        async {
+          val (files, view) = loadContent(e.open())
+          (files, view, FileInfo.ParentDirectory)
+        }
+    }
   }
 
 
@@ -122,9 +131,9 @@ final class FileWalker private(
    * Closes this file walker. Should be called when
    * theer are no active operations. */
   def close() : Promise[Unit] = {
-    if (inOp)
+    if (stateV.value == Ready)
       return immediate(())
-    inOp = true
+    stateV.set(Closing)
     val res = async {
       var p = curDirectoryV.value
       do {
@@ -150,6 +159,15 @@ final class FileWalker private(
  * Filesystem walker companion object.
  */
 object FileWalker {
+
+  /** File walker state. */
+  abstract sealed class State
+  /** File walker is ready and could accept next action. */
+  case object Ready extends State
+  /** Synchronous navigation is active. */
+  case object SyncNav extends State
+  /** Walker is closing. */
+  case object Closing extends State
 
 
   /** Sorts items according to a sort spec. */

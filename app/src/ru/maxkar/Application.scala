@@ -44,8 +44,6 @@ class Application(
   def start() : Unit = {
     var primaryStage = new JFrame("Image viewer")
 
-    val imgIohandler = new CountingExecutor(SwingUtilities.invokeLater, iohandler)
-
     val curFile = variable[DirectoryEntry](null)
     val (fsRender, validSelection) =
       FileWalkerView.make(bro,
@@ -65,7 +63,7 @@ class Application(
 
     val zoom = variable[Zoom](Zoom.Fixed(1.0))
 
-    val (imageui, effectiveZoom) = ImageLoaderView.autoMake(imgIohandler, file, zoom)
+    val (imageui, effectiveZoom) = ImageLoaderView.autoMake(iohandler, file, zoom)
     val zooms = Zoom.SmartFit +: Zoom.Fit +: zoomLevels.map(Zoom.Fixed(_))
 
     val root = Layouts.border(
@@ -96,17 +94,15 @@ class Application(
     }
     primaryStage setDefaultCloseOperation WindowConstants.DO_NOTHING_ON_CLOSE
 
-    primaryStage setGlassPane Controls.lockPane(
-      shouldLock _ ≻ imgIohandler.operationCount ≻ iohandler.operationCount)
+    primaryStage setGlassPane Controls.lockPane(bro.state ≺ shouldLock)
 
     primaryStage.pack()
     primaryStage setVisible true
   }
 
 
-
-  private def shouldLock(imgOps : Int)(nonImgOps : Int) : Boolean =
-    imgOps < nonImgOps
+  private def shouldLock(state : FileWalker.State) : Boolean =
+    state != FileWalker.Closing && state != FileWalker.Ready
 }
 
 
